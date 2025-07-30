@@ -4,30 +4,23 @@
 
 library(shiny) #ESSENTIAL.
 library(dplyr) #DATA MANIPULATION.
-library(stringr) #STRING MANIPULATION.
 library(gargle) #GOOGLE DRIVE AUTHETICATION.
 library(googledrive) #GOOGLE DRIVE INTERACTIONS.
 library(googlesheets4) #GOOGLE SHEETS INTERACTIONS.
 library(shinyjs) #COMMON JAVASCRIPT OPERATIONS.
-library(DT) #DT TABLES
 library(waiter) #WAITERS, SPINNERS, AND PRELOADERS.
-library(sf) #WORKING W/ SPATIAL DATA FOR MAPS (IF USING LEAFLET)
-library(leaflet) #LEAFLET MAPS
 library(shinydisconnect) #CUSTOM DISCONNECT SCREEN.
-library(plotly) #PLOTLY GRAPHS
-library(viridis) #COLORBLIND-FRIENDLY PALETTES
-
 
 # ### SETTING GLOBAL OPTIONS ### ------------------------------------------
 
 #IN GENERAL, I DON'T DO MUCH HERE, BUT I DO SET UP CONNECTIONS TO GOOGLE DRIVE HERE AS NEEDED. REMOVE THESE IF THEY ARE IRRELEVANT TO YOU.
 
 #SET SCOPES FOR WHAT OUR GOOGLE APIS WILL BE ALLOWED TO DO
-sheets_scope <- "https://www.googleapis.com/auth/spreadsheets"
-drive_scope <- "https://www.googleapis.com/auth/drive"
+sheets_scope = "https://www.googleapis.com/auth/spreadsheets"
+drive_scope = "https://www.googleapis.com/auth/drive"
 
 #SET FILE PATH TO THE GOOGLE SERVICE ACCOUNT TOKEN
-sa_key_path <- "PI_Survey/.secrets/picharter-57080685c8d0.json"
+sa_key_path = "tokens/.secrets/zm-safari-652312ebb93c.json"
 
 #DON'T TRY TO AUTHENTICATE USING STANDARD TOKENS.
 options(
@@ -40,40 +33,21 @@ drive_auth(path = sa_key_path, scopes = c(sheets_scope, drive_scope))
 #ALSO AUTHENTICATE TO GOOGLE SHEETS SPECIFICALLY
 googlesheets4::gs4_auth(path = sa_key_path, scopes = c(sheets_scope, drive_scope))
 
-
-# ### LOAD MODULES ### ----------------------------------------------------
-
-#IF YOU HAVE MODULARIZED THE APP, LOAD THE MODULE FILES HERE.
-
-source("Rcode/Modules/ExampleServer.R")
-source("Rcode/Modules/ExampleUI.R")
-
-
-
 #  ### ESTABLISH CONVENIENCE FUNCTIONS ### --------------------------------
-
-#I HAVE SEVERAL CONVENIENCE FUNCTIONS THAT I OFTEN SEEM TO NEED IN MY SHINY APPS. I'VE STORED THESE IN A SINGLE FILE THAT I SOURCE HERE. ANY MORE "NICHE" ONES I WRITE OUT HERE.
 
 source("Rcode/Scripts/shinyConvenienceFunctions.R")
  
-
 # ### LOAD NECESSARY INPUTS ### -------------------------------------------
-
-#MOST SHINY APPS DEPEND UPON AT LEAST SOME OUTSIDE DATA. LOAD THAT HERE. I'VE INCLUDED SOME THINGS HERE I REGULARLY NEED--DELETE ANY THAT ARE IRRELEVANT AND REMOVE THE RESPECTIVE FILES FROM THE INPUTS FOLDER.
 
 #I SO REGULARLY NEED TO KNOW THE NAMES/DOWS/COUNTIES OF LAKES IN MN THAT I'VE COMBINED ALL THAT INTO A SINGLE DF, LOADED HERE.
 dows_lakenames_counties = read.csv("inputs/Static/dows_lakenames_counties.csv", colClasses = "character")
 
-#THIS OBJECT IS A LIST OF ALL THE LAKE DOWS THAT ARE ON TRIBAL LANDS IN THE STATE.
-tribal_DOWs = readRDS("inputs/Static/tribal_DOWs.rds") 
-
 #AN OUTLINE OF THE STATE OF MINNESOTA FOR MAPS.
 MN = readRDS("inputs/Static/MN") 
 
-#HERE IS SOME SAMPLE CODE FOR GETTING THE SHEET ID FOR A GOOGLE SHEET, IN CASE YOU NEED TO "TALK" TO ONE. 
- metadata_id = googledrive::drive_get("[SHARING LINK]")$id
+#GET LINKS TO KEY OUTSIDE FILES IN THE DRIVE STRUCTURE.
+metadata_id = googledrive::drive_get("https://docs.google.com/spreadsheets/d/1Tz58-rYss9Rq0vG_ac6MQr4LfMwN4SJ3fpxOZqNSCGE")$id
+submitted_pics_id = googledrive::drive_get("https://drive.google.com/drive/folders/1U9apDRatN-Ab9qif4uOxc0ywRYy-aMCu")$id
 
 
 # ### PRE-BAKE GLOBAL ENVIRONMENT OBJECTS ### -----------------------------
-
-#ANY OPERATIONS THAT CAN BE AVOIDED DURING APP OPERATION BY PERFORMING THEM ON LAUNCH ("PRE-BAKING") IMPROVES USER EXPERIENCE. IDEALLY, THESE WOULD BE FASHIONED UPSTREAM AND SIMPLY LOADED IN THE PREVIOUS SECTION, BUT SOMETIMES, THESE CHANGE OFTEN ENOUGH THAT IT'S MORE CONVENIENT TO DO THOSE OPERATIONS HERE, IF THEY ARE SPEEDY ENOUGH.
