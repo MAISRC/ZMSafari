@@ -43,3 +43,6 @@ tokens/.secrets
 
 #RSconnect
 rsconnect/
+
+#Google docs
+*.gdoc

@@ -51,34 +51,100 @@ replaceViaLookup = function(strings, toreplace, replacements) {
   stringr::str_replace_all(strings, replacement.vec) #Use this function to do the string replacements.
 }
 
-# BY DEFAULT, R SHINY'S SELECTINPUT (AND SELECTIZEINPUT) COMES WITH TWO INPUT ELEMENTS--ONE FOR THE TEXT BOX COMPONENT AND ONE FOR THE DROPDOWN MENU COMPONENT. HOWEVER, THESE GET JUST ONE LABEL, WHICH MEANS THE OTHER GOES UNLABELED, WHICH VIOLATES DIGITAL ACCESSIBILITY. THIS FUNCTION CAN BE USED TO SET ARIA-LABELS FOR BOTH INPUT ELEMENTS MANUALLY USING THE ELEMENT'S INPUT ID AND THE DESIRED LABELS FOR BOTH INPUTS.
-setSelectInputAria = function(
-    inputId, 
-    ariaLabelText = "Enter or select here.", 
-    ariaLabelDropdown = "List of available options"
-) {
 
-  script = str_c(
-    "$(document).ready(function() {\n",
-    "  var checkExist = setInterval(function() {\n",
-    "    var selectEl = document.getElementById('", inputId, "');\n",
-    "    if (selectEl) {\n",
-    "      // Set ARIA label for the text box widget \n",
-    "      selectEl.setAttribute('aria-label', '", ariaLabelText, "');\n",
-    "      \n",
-    "      // For the dropdown portion, we generally target something like\n",
-    "      // '#", inputId, "-selectized ~ .selectize-dropdown .selectize-dropdown-content'\n",
-    "      // but exact class sometimes depends. This path is often reliable:\n",
-    "      var dropdown = document.querySelector('#", inputId, "-selectized ~ .selectize-dropdown .selectize-dropdown-content[role=\"listbox\"]');\n",
-    "      if (dropdown) {\n",
-    "        dropdown.setAttribute('aria-label', '", ariaLabelDropdown, "');\n",
-    "      }\n",
-    "      clearInterval(checkExist); // stop checking\n",
-    "    }\n",
-    "  }, 100);\n", 
-    "});\n"
-  )
-  
-  # Wrap in HTML script tag
-  tags$script(HTML(script))
+##SHINY'S DATE INPUTS WILL BY DEFAULT SET A LABEL'S FOR ATTRIBUTE TO POINT AT THE HOUSING DIV INSTEAD OF AT THE INPUT SUB-ELEMENT. THIS FUNCTION IS A DROP-IN FIX FOR THIS--ADD IT TO THE UI AFTER ANY DATE INPUT AND REFERENCE ITS inputID.
+fixDateInputLabel = function(inputId) {
+  tags$script(HTML(sprintf("
+    $(document).ready(function() {
+      const container = document.getElementById('%s');
+      if (!container) return;
+
+      const label = document.getElementById('%s-label');
+      const input = container.querySelector('input');
+
+      if (label && input) {
+        if (!input.id) {
+          input.id = '%s-fixed-input';
+        }
+        label.setAttribute('for', input.id);
+      }
+    });
+  ", inputId, inputId, inputId)))
+}
+
+
+##APPARENTLY, PICKER INPUTS FUNCTIONALLY SUPPRESS A SELECT INPUT THEY CREATE BY JUST HIDING IT VIA TRANSPARENCY, BUT OBVIOUSLY WAVE DOESN'T LIKE THAT, SO WE USE THIS JS TO GO FULL NUCLEAR IN TERMS OF ACTUALLY HIDING THAT ELEMENT SO THAT NO ASSISTIVE TECHNOLOGIES COULD TRIP ON IT AND NO USER WOULD EASIER RE-DISPLAY IT.
+suppressNativeSelectAccessibility = function(inputId) {
+  tags$script(HTML(sprintf("
+    $(document).ready(function() {
+      var el = document.getElementById('%s');
+      if (el) {
+        el.setAttribute('aria-hidden', 'true');
+        el.setAttribute('tabindex', '-1');
+        el.style.visibility = 'hidden';
+        el.style.position = 'absolute';
+        el.style.width = '0';
+        el.style.height = '0';
+        el.style.overflow = 'hidden';
+        el.style.pointerEvents = 'none';
+        el.style.color = 'inherit';  // prevent contrast warnings
+        el.style.backgroundColor = 'inherit';
+      }
+    });
+  ", inputId)))
+}
+
+##PICKERINPUTS ACTUALLY FUNCTION UNDER THE HOOD BY CREATING BUTTON ELEMENTS THAT DO THE REAL WORK. HOWEVER, BY DEFAULT, THEY GIVE THESE BUTTONS A TITLE ATTRIBUTE THAT DUPLICATES THE BUTTON TEXT, WHICH WAVE DOESN'T LIKE. THIS FUNCTION SUPPRESSES THE TITLE ATTRIBUTE SINCE IT'D BE REDUNDANT IN THESE INSTANCES ANYHOW.
+stripPickerDuplicateTitles = function(inputId) {
+  tags$script(HTML(sprintf("
+    $(document).ready(function() {
+      // Bootstrap-select renders a <button> after setup
+      // Use a short delay to wait for rendering
+      setTimeout(function() {
+        var button = document.querySelector('button[data-id=\"%s\"]');
+        if (button) {
+          var labelText = button.innerText.trim();
+          var titleText = button.getAttribute('title')?.trim();
+
+          if (titleText && labelText === titleText) {
+            button.removeAttribute('title');
+          }
+        }
+      }, 100);
+    });
+  ", inputId)))
+}
+
+#FILEINPUTS HAVE THIS BOGUS, JUST-FOR-SHOW TEXT INPUT ELEMENT THAT HOLDS PLACEHOLDER TEXT, PROGRESS BAR, AND FILE NAMES. THIS FAILS TO GET A LABEL, WHICH WAVE DOESN'T LIKE. THIS FUNCTION CHANGES THIS INPUT'S ATTRIBUTES TO BE MORE FULLY IGNORABLE.
+suppressFileInputFauxTextbox = function(inputId) {
+  tags$script(HTML(sprintf("
+    $(document).ready(function() {
+      var fileInput = document.getElementById('%s');
+      if (!fileInput) return;
+
+      var inputGroup = fileInput.closest('.input-group');
+      if (!inputGroup) return;
+
+      var fauxInput = inputGroup.querySelector('input.form-control[type=\"text\"]');
+      if (fauxInput) {
+        fauxInput.setAttribute('aria-label', 'Filename display only (decorative)');
+      }
+    });
+  ", inputId)))
+}
+
+#RADIOBUTTONS TURN THE PROVIDED LABEL INTO AN "OUTER LABEL" FOR THE WHOLE GROUP OF BUTTONS, EVEN THOUGH EACH IS AN INPUT THAT THEN GETS A LABEL FORMED BY ITS CHOICE'S STRING. SO, THE OUTER LABEL HAS A FOR ATTRIBUTE THAT SAYS IT LABELS A FORM CONTROL WHEN IT DOESN'T.
+suppressRadioGroupLabelWarnings = function(inputId){
+  tags$script(HTML(sprintf("
+    $(document).ready(function() {
+      var label = document.getElementById('%s-label');
+      if (label && label.tagName.toLowerCase() === 'label') {
+        var ele = document.createElement('p');
+        ele.id = label.id;
+        ele.className = label.className;
+        ele.textContent = label.textContent;
+        label.parentNode.replaceChild(ele, label);
+      }
+    });
+  ", inputId)))
 }

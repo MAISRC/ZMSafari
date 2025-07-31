@@ -10,6 +10,8 @@ library(googlesheets4) #GOOGLE SHEETS INTERACTIONS.
 library(shinyjs) #COMMON JAVASCRIPT OPERATIONS.
 library(waiter) #WAITERS, SPINNERS, AND PRELOADERS.
 library(shinydisconnect) #CUSTOM DISCONNECT SCREEN.
+library(shinyWidgets) #FOR PICKER INPUTS.
+library(shinyvalidate) #FOR FORM VALIDATION.
 
 # ### SETTING GLOBAL OPTIONS ### ------------------------------------------
 
@@ -41,13 +43,15 @@ source("Rcode/Scripts/shinyConvenienceFunctions.R")
 
 #I SO REGULARLY NEED TO KNOW THE NAMES/DOWS/COUNTIES OF LAKES IN MN THAT I'VE COMBINED ALL THAT INTO A SINGLE DF, LOADED HERE.
 dows_lakenames_counties = read.csv("inputs/Static/dows_lakenames_counties.csv", colClasses = "character")
+  dows_lakenames_counties$DOW[nchar(dows_lakenames_counties$DOW) == 7] = 
+    paste0("0", dows_lakenames_counties$DOW[nchar(dows_lakenames_counties$DOW) == 7])
 
-#AN OUTLINE OF THE STATE OF MINNESOTA FOR MAPS.
-MN = readRDS("inputs/Static/MN") 
+  counties_list = sort(unique(dows_lakenames_counties$COUNTY))
+
 
 #GET LINKS TO KEY OUTSIDE FILES IN THE DRIVE STRUCTURE.
-metadata_id = googledrive::drive_get("https://docs.google.com/spreadsheets/d/1Tz58-rYss9Rq0vG_ac6MQr4LfMwN4SJ3fpxOZqNSCGE")$id
-submitted_pics_id = googledrive::drive_get("https://drive.google.com/drive/folders/1U9apDRatN-Ab9qif4uOxc0ywRYy-aMCu")$id
+metadata_id = googledrive::drive_get("https://docs.google.com/spreadsheets/d/1R7zZBgKYQbk5VAUOzGDWWtIEvX01yyWuxsMhnSrfBbQ/edit?usp=sharing")$id
+submitted_pics_id = googledrive::drive_get("https://drive.google.com/drive/folders/1YTtfdp4oEiYLA7KDMMRkL8SiDtgOsxBb/edit?usp=sharing")$id
 
 
 # ### PRE-BAKE GLOBAL ENVIRONMENT OBJECTS ### -----------------------------

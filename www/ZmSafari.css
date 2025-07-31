@@ -9,7 +9,6 @@
 }
 
 
-
 /* ### ADJUSTING APP-WIDE ELEMENTS ### */
 
 /* THIS RULE SETS A EVER-SO-SLIGHTLY OFF-WHITE BACKGROUND FOR THE ENTIRE APP (SOFTER THAN WHITE) WITH A MINNESOTA RED FONT COLOR AS DEFAULT (WITH ENOUGH CONTRAST TO MEET ACCESSIBILITY STANDARDS). IT ALSO SETS FONT SIZE TO LARGE AND FONT TO OPENSANS BY DEFAULT, BOTH OF WHICH ALIGN WITH ACCESSIBILITY AND UMN STANDARDS. */
@@ -36,7 +35,10 @@ a:visited {
 
 /* TO MEET ACCESSIBILITY REQUIREMENTS, ALL APPS SHOULD HAVE AN H1. I USUALLY MAKE THIS A LOGO IMAGE AND LABEL IT AS AN H1 VIA ARIA-LABELING, BUT OTHERWISE, WE'D ADJUST ITS APPEARANCE THIS WAY. */
 h1 {
-  
+  font-weight: bold;
+  font-size: 190%;
+  text-align: center;
+  color: #C28100;
 }
 
 /* TO MEET ACCESSIBILITY REQUIREMENTS, WE MUST USE H2 ELEMENTS, SO THIS RULE ADJUSTS THEIR APPEARANCE. */
@@ -56,77 +58,33 @@ h3 {
   padding-right: 2%;
 }
 
-/* MY APPS DON'T ALWAYS GO AS DEEP AS H4 HEADERS BUT WE CAN USE THIS RULE TO ADJUST THEM ALL. */
-h4 {
-  
+div#whole_page {
+  min-width: 95%;
+  max-width: 95%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-/* ANY APPS THAT HAVE A MENU BAR OR A SET OF TABS THAT CAN BE CLICKED TO DIRECT USERS ELSEWHERE IN THE APP OR ON THE WEB SHOULD USE A NAV ELEMENT TO DISTINGUISH THIS. THIS RULE ADJUSTS THE APPEARANCE OF SUCH AN ELEMENT. */
-nav {
-  
-}
 
 /* THE "PRIMARY" PART OF THE APP SCREEN (OR OF A TAB) SHOULD BE WRAPPED IN A SEMANTIC "MAIN" ELEMENT TAG. THIS ADJUSTS SUCH AN ELEMENT'S APPEARANCE. */
 main {
-  
+  min-width: 100%;
+  max-width: 100%;
 }
 
-/* IF THE APP HAS A SIDEBAR PANEL OR SOMETHING SIMILAR THAT CONTAINS OPTIONS OR TOGGLES OR EXTRA CONTENT, IT SHOULD BE WRAPPED IN AN ASIDE TAG, WHICH CAN BE ADJUSTED USING THIS RULE. */
-aside {
-  
-}
 
 /* MY APPS DON'T TEND TO USE IMAGES, BUT THIS RULE WOULD EDIT THEM ALL, WHICH CAN BE USEFUL FOR FORCING THEM TO ADHERE TO A CERTAIN SIZE. */
 img {
   object-fit: contain;
-  max-height: 100px;
+  max-height: 350px;
   max-width: 100%;
   margin-top: 10px;
+  margin-bottom: 10px;
 }
-
-
-
-/* ### ADJUSTING SHINY-SPECIFIC ELEMENTS ### */
-
-/* IF USING SHINY'S TABPANELS AND TABSETPANELS, THIS SETS A MINIMUM WIDTH TO THESE OF 320 PX, WHICH IS ABOUT AS SMALL AS YOU'D WANT THEM FOR MOBILE DEVICES IN PORTRAIT MODE. */
-div.tab-content {
-  min-width: 320px;
-}
-
-/* THE FOLLOWING TWO RULES APPLY TO A NAVBAR PRODUCED USING NAVBARPAGE. I DON'T RECOMMEND USING THIS SHINY FUNCTIONALITY--IT'S FUSSY--BUT IF YOU DO, THEN THESE RULES CAN ADJUST ITS APPEARANCE. */
-nav.navbar {
-
-}
-
-div.navbar-collapse {
-
-}
-
-div.navbar-header {
-
-}
-
-/* IF USING SHINY MODALS, THIS ADJUSTS THE TITLES OF THOSE MODALS. THE TITLES OF THESE ALMOST ALWAYS LOOK VERY SMALL, SO THIS ADJUSTMENT IS PRACTICALLY ESSENTIAL. */
-.modal-title {
-  font-size: x-large; 
-}
-
-/* THE NEXT TWO RULES HAVE TO DO WITH ADJUSTING THE APPEARANCE OF MODALS IF YOU USE SHINY'S DEFAULT MODAL SYSTEM. */
-div.modal-body {
-  color: black;
-  display: flex;
-  justify-content: center;
-}
-
-div.modal-header {
-  text-align: center;
-}
-
-/* SOMETIMES, WITH WAITERS, YOU NEED TO ADJUST THEIR EXACT LOCATIONS A LITTLE TO GET THEM TO ALIGN WITH THE ELEMENTS THEY HIDE. THIS RULE ALLOWS FOR THAT. */
-.waiter-overlay.waiter-local {
-  left: 0 !important;  
-}
-
 
 
 /* ### ADJUSTING COMMON SEMANTIC ELEMENTS/TAGS ### */
@@ -135,17 +93,17 @@ div.modal-header {
 header {
   margin-left: 0px !important;
   margin-right: 0px !important;
-  min-width: 320px;
+  min-width: 100%;
+  max-width: 100%;
 }
 
 /* SIMILAR TO A HEADER, THERE IS GENERALLY A FOOTER ELEMENT AT THE BOTTOM OF THE SCREEN. THIS RULE WILL ADJUST ITS APPEARANCE. */
 footer {
-  min-width: 320px;
-  font-size: 75%; 
-  padding-left: 1%; 
+  min-width: 100%;
+  max-width: 100%;
+  font-size: 80%; 
   margin-bottom: 10px;
-  margin-top: -30px;
-  font-style: italic;
+  margin-top: 15px;
   text-align: center;
 }
 
@@ -160,31 +118,14 @@ fieldset {
   display: flex;
   flex-direction: column;
   align-items: center;
-  flex-wrap: wrap;
-}
-
-/* ANOTHER COMMON SEMANTIC TAG IS SECTION, WHICH IS FOR A DISTINCT SECTION OF THE PAGE, SUCH AS ONE CONTAINING BACKGROUND INFO OR ARTICLES. THIS RULE WOULD TARGET ALL SUCH ELEMENTS. */
-section {
-
+  min-width: 100%;
+  max-width: 100%;
 }
 
 /* FOR ACCESSIBILITY, WHENEVER AN APP INCLUDES A FORM THAT GATHERS USER-SPECIFIC DATA (AND MAYBE SUBMITS IT), IT SHOULD HAVE A FORM TAG AROUND IT. THIS RULE WOULD ADJUST ALL SUCH FORMS. */
 form {
-
-}
-
-/* FOR ACCESSIBILITY, THE FIGURE AND FIGCAPTION SEMANTIC TAGS ARE TO BE USED FOR EVERY FIGURE. THIS RULE WOULD ADJUST THE APPEARANCE OF ALL FIGURE CAPTIONS. */
-figcaption {
-  color: #545454;
-  font-style: italic;
-  font-size: 80%;
-}
-
-/* THIS IS THE SAME BUT FOR THE CAPTION TAGS OFTEN USED BY DT TABLES INSTEAD. */
-caption {
-  color: #545454; 
-  font-style: italic;
-  font-size: 100%;
+  min-width: 95%;
+  max-width: 95%;
 }
 
 /* TO MEET ACCESSIBILITY REQUIREMENTS, CONTACT INFO IS SUPPOSED TO BE HOUSED IN AN ADDRESS SEMANTIC TAG. THIS RULE WOULD ADJUST THE APPEARANCE OF ALL SUCH TAGS. */
@@ -194,7 +135,8 @@ address {
 
 /* WHEN USING A FIELDSET SEMANTIC TAG, ALL SUCH FIELDSETS SHOULD BE ACCOMPANYIED BY A LEGEND TAG. THIS WOULD ADJUST ALL SUCH LEGENDS. */
 legend {
-  width: 80%; 
+  max-width: 80%; 
+  min-width: 310px;
   margin: 5px auto; 
   font-style: italic; 
   color: black; 
@@ -204,17 +146,17 @@ legend {
   justify-content: center;
 }
 
-
-
 /* ### ADJUSTING SHINY-RELATED INPUT WIDGETS ### */
 
 /* IF YOU USE SHINY'S TYPICAL INPUTS, THIS RULE AFFECTS THEIR DEFAULT STYLING. HERE, I HAVE THE FONT CHANGING TO BLACK, ALIGNING LEFT, GETTING A LITTLE SMALLER, AND APPLYING SOME LEFT AND RIGHT BUFFER TO KEEP THE FONT FROM CLIPPING THE EDGES. */
 .shiny-input-container, .shiny-bound-input {
-  color: black;
+  color: black !important;
   text-align: left;
   font-size: 95%;
   margin-left: 5px;
   margin-right: 5px;
+  width: 95% !important;
+  min-width: 50%;
 }
 
 /* THIS RULE APPLIES TO ANY SELECTINPUTS THAT GET DROPDOWN MENUS. THIS SETS THEIR FONT AND BACKGROUND COLORS TO BE MORE READABLE. */
@@ -238,8 +180,9 @@ select.form-control>option {
 button.btn-default {
   background-color: #FAFAFA; 
   color: #7a0019; 
-  min-width: 320px;
-  height: 41.225px;
+  min-width: 280px;
+  max-width: 100%;
+  width: fit-content;
   white-space: normal;
   border-color: black; 
   border-width: 2px; 
@@ -251,7 +194,7 @@ button.btn-default {
 
 /* IF YOU USE SHINYJS TO DISABLE BUTTONS, THIS RULE APPLIES TO WHAT THOSE BUTTONS WILL LOOK LIKE DISABLED. THIS WILL TURN THEIR FONT COLOR TO GRAY, WHICH IS A TYPICAL SIGNAL THAT THE BUTTON IS DISABLED. */
 button.btn.disabled {
-  color: gray;
+  color: #404040;
 }
 
 /* HERE'S WHERE YOU'D CODE WHAT WOULD CHANGE ABOUT A BUTTON IF IT WERE HOVERED OVER. */
@@ -269,20 +212,6 @@ input[type="checkbox"] {
   width: 20px;
   height: 20px;
 }
-
-
-
-/* ### ADJUSTING DT TABLES ### */
-
-/* THIS RULE AFFECTS ANY DT TABLES INCLUDED IN THE APP. HERE, I SET THE BACKGROUND TO OFFWHITE, THE FONT TO BLACK, THE FONT SIZE TO A BIT SMALLER, AND ADD SOME PADDING AND MARGINING. */
-div.datatables {
-  background-color: #FAFAFA;
-  color: black;
-  padding: 2% 2% 2% 2%;
-  margin-bottom: 2%;
-  font-size: 80%;
-}
-
 
 
 /* ### CONVENIENCE CLASSES FOR QUICK, COMMON AESTHETIC CHANGES ### */
@@ -333,16 +262,33 @@ div.datatables {
 
 /* ### MEDIA QUERIES ### */
 
-/* THE FOLLOWING IS JUST AN EXAMPLE OF A MEDIA QUERY, WHICH CAN BE USED TO CONDITIONALLY APPLY STYLING WHEN ON CERTAIN DEVICES OR WHEN THE USER'S SCREEN IS A CERTAIN SIZE. */
-@media (max-width: 767px) {
 
+
+/* ### AD HOC ELEMENT ADJUSTMENTS ### */
+
+div.submitted_photos_rows {
+  border-bottom: 4px solid #333;
 }
 
+img#logo {
+  max-height: 100px;
+}
 
+div#submitted_photos_div {
+  display: flex;
+  flex-direction: column;
+}
 
-/* ### ADJUSTING LEAFLET MAPS ### */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  border: 0;
+}
 
-/* ON LEAFLET MAPS, THE ZOOM-IN/ZOOM-OUT BUTTONS ARE FREQUENTLY TOO DIM TO HAVE SUFFICIENT CONTRAST. THIS FIXES THAT. */
-a.leaflet-control-zoom-out, a.leaflet-control-zoom-in {
-  color: #8C8C8C !important;
+.bootstrap-select>.dropdown-toggle {
+  min-width: 280px;
+  max-width: 100%;
 }
