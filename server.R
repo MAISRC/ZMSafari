@@ -10,8 +10,8 @@ shinyServer(function(input, output, session) {
   )
   
   #PUT ON WAITER FOR WHEN PICS ARE SUBMITTED...
-  image_ui_waiter = Waiter$new(id = "app_main",
-                               html = tagList(p("Give us a sec to upload, check, and display your images...", style = "color: black;"),
+  image_ui_waiter = Waiter$new(id = NULL, #SET TO WHOLE PAGE.
+    html = tagList(p("Give us a sec: Now that we\'ve received your pics (nice pics by the way!), we\'re getting the rest of the form ready for you...", style = "color: black; font-size: 125%;"), br(), br(),
                                               spin_hexdots()),
                                color = "#ffb71e", 
                                fadeout = 1500)
@@ -61,10 +61,18 @@ shinyServer(function(input, output, session) {
     }
   })
   form.valid$add_rule("confirm_address", sv_equal(TRUE, "Please provide confirmation!"))
-  
 
 # OBSERVERS ---------------------------------------------------------------
 
+
+  ## DEBUGGING OBSERVERS -----------------------------------------------------
+
+  # THIS WILL HOPEFULLY PASS ALONG ERRORS FROM THE JS CONSOLE SO THEY REGISTER IN ERROR MESSAGES.
+  # observeEvent(input$js_error, {
+  #   print("JS Error from client:")
+  #   str(input$js_error)
+  # })
+  # 
 
   ## UI UPDATING OBSERVERS ---------------------------------------------------
 
@@ -82,6 +90,12 @@ shinyServer(function(input, output, session) {
                                   sort(unique(newlakeslist))))
     
   })
+  
+  #WAIT UNTIL THE UI HAS ACTUALLY FULLY BUILT BEFORE SCROLLING AND TURNING THE WAITER OFF.
+  observeEvent(input$uiRendered, {
+    image_ui_waiter$hide()
+    session$sendCustomMessage("scrollToTarget", list(id = "file_warning_area"))
+  })
 
   ## PIC SUBMISSION LOGIC OBSERVERS ---------------------------------------------------
   
@@ -92,6 +106,8 @@ shinyServer(function(input, output, session) {
     output$file_val_warning = renderUI({  }) #WIPE OUT WARNING.
 
     req(input$submitted_files) #MAKE SURE THERE EVEN ARE FILES.
+    
+    image_ui_waiter$show()
     
     data1 = data.frame(input$submitted_files)
     ext = tolower(tools::file_ext(input$submitted_files$datapath))
@@ -109,7 +125,7 @@ shinyServer(function(input, output, session) {
       if(length(ext) != 6){
         val_string = paste(val_string, "<li>You uploaded more or fewer than six files.</li>", sep = "")
       }
-      if(length(unique(input$submitted_files$name)) != 6 ) {
+      if(length(ext) == 6 && length(unique(input$submitted_files$name)) != 6 ) {
         val_string = paste(val_string, "<li>At least two files had the same name, suggesting they might be duplicates.</li>", sep = "")
       }
       if(!all(ext %in% valid_image_exts)) {
@@ -120,6 +136,7 @@ shinyServer(function(input, output, session) {
       output$file_val_warning = renderUI({ HTML(val_string) })
       shinyjs::html(id = "aria_status", html = val_string) #SEND TO ARIA-LIVE REGION ALSO
       session$sendCustomMessage("scrollToTarget", list(id = "file_warning_area")) #SCROLL BACK DOWN.
+      image_ui_waiter$hide()
       
     }
     
@@ -140,8 +157,6 @@ shinyServer(function(input, output, session) {
     
     req(isTruthy(reactives$valid_files)) #COULD ONLY EVER PASS IF THERE ARE EXACTLY 6 FILES.
 
-    image_ui_waiter$show()
-    
     data1 = data.frame(input$submitted_files)
     
     #GO IMAGE BY IMAGE, LOAD, AND ASSEMBLE UI BLOCK
@@ -176,7 +191,8 @@ shinyServer(function(input, output, session) {
               choiceNames = c("No selection", "The upper surface (facing the sky)", "The lower surface (facing the lakebed)"),
               inline = F
             ),
-            suppressRadioGroupLabelWarnings(paste0("submitted_pic_surface", my_i))
+            suppressRadioGroupLabelWarnings(paste0("submitted_pic_surface", my_i)),
+            hr()
            )
           )
         })
@@ -184,33 +200,76 @@ shinyServer(function(input, output, session) {
     }
     #ADD ONE MORE QUESTION REQUESTED BY MEGAN.
     output$confirm_address_div = renderUI({
-      checkboxInput(inputId = "confirm_address", 
+      tagList(checkboxInput(inputId = "confirm_address", 
                                   label = "Please confirm these pictures are for the street address you provided above!",
-                                  value = FALSE)
+                                  value = FALSE),
+      hr(),
+      tags$script(HTML("Shiny.setInputValue('uiRendered', Math.random());")) #TRIGGER THE WAITER TO TURN OFF.
+      )
     })
     
     shinyjs::html(id = "aria_status", html = "Note: The six files submitted were acceptable--they are now displayed on screen along with additional questions for you to answer.") #<-BUMP THE ARIA LIVE REGION.
 
     reactives$pic_ui_done = TRUE #SET FLAG FOR PROGRESS.
-    image_ui_waiter$hide() #TURN OFF WAITER.
     session$sendCustomMessage("scrollToTarget", list(id = "file_warning_area")) #SCROLL DOWN.
+
     
   })
   
-  ##ONCE THE PIC UI IS DONE, TRIGGER A SINGLE TURN-ON OF ALL VALIDATORS. 
+  ##ONCE THE PIC UI IS DONE, TRIGGER A SINGLE TURN-ON OF THE OBSERVER THAT STARTS CHECKING TO SEE IF A USER IS GETTING CLOSE TO THE END OF THE FORM SO WE CAN TURN ON THE VALIDATION CHECKERS.
   observeEvent(reactives$pic_ui_done, ignoreInit = TRUE, once = TRUE, {
     
     if(reactives$pic_ui_done) {
-    form.valid$enable()
-    piccheck.valid$enable()
-    shinyjs::html(id = "aria_status", html = "We just checked over all your answers so far—if any are invalid, they are now marked with clarifications.") #<--SEND MESSAGE TO ARIA LIVE REGION FOR SCREEN READERS.
+      validation_observer$resume()
     }
   })
+  
+  #THIS SUSPENDED OBSERVER WATCHES ALL THE PIC RELATED INPUTS AND SUMS THEIR OUTPUTS TO SEE WHEN A USER IS DOWN TO THEIR LAST COUPLE, THEN TURNS ON THE VALIDATIONS.
+  validation_observer = observeEvent(list(input$submitted_pic_plate1,
+                                          input$submitted_pic_plate2,
+                                          input$submitted_pic_surface1,
+                                          input$submitted_pic_surface2,
+                                          input$submitted_pic_plate3,
+                                          input$submitted_pic_plate4,
+                                          input$submitted_pic_surface3,
+                                          input$submitted_pic_surface4,
+                                          input$submitted_pic_plate5,
+                                          input$submitted_pic_plate6,
+                                          input$submitted_pic_surface5,
+                                          input$submitted_pic_surface6), 
+                                     suspended = TRUE, {
+    
+                                   check_sum = sum(
+                                     c(input$submitted_pic_plate1,
+                                       input$submitted_pic_plate2,
+                                       input$submitted_pic_surface1,
+                                       input$submitted_pic_surface2,
+                                       input$submitted_pic_plate3,
+                                       input$submitted_pic_plate4,
+                                       input$submitted_pic_surface3,
+                                       input$submitted_pic_surface4,
+                                       input$submitted_pic_plate5,
+                                       input$submitted_pic_plate6,
+                                       input$submitted_pic_surface5,
+                                       input$submitted_pic_surface6) == "No selection")
+                                   
+                                   print(check_sum)
+                                   
+         if(check_sum != 0 && check_sum < 3) { #IT WILL INITIALLY BE 0 ON INITIATION, IGNORE THAT.
+           form.valid$enable()
+           piccheck.valid$enable()
+           shinyjs::html(id = "aria_status", html = "We just checked over your form. If any answers are invalid, they will now be marked with clarifications.") #<--SEND MESSAGE TO ARIA LIVE REGION FOR SCREEN READERS.
+         }
+    
+  })
+
 
     #STEP 3 IN PIC SUBMISSION LOGIC CHAIN: ONCE THEY HAVE ACCESS TO THE PIC QUESTIONS, ENSURE THAT ALL THOSE ANSWERS ARE UNIQUE.
    observe({
      
       req(isTruthy(reactives$pic_ui_done)) #ONLY DOESN'T GATE WHEN READY.
+     
+ #    image_ui_waiter$hide() #TURN OFF WAITER.
       
       ##WE FIRST DO A CHECK TO ENSURE THAT ALL THE PIC INPUTS YIELD DIFFERENT OUTPUT STRINGS TO ENSURE THEY ARE ALL DIFFERENT. THAT MEANS WE ARE GETTING A PIC FROM EACH PLATE'S SURFACE.
       str1 = paste0(input$submitted_pic_plate1, input$submitted_pic_surface1, collapse = '')
@@ -316,7 +375,8 @@ shinyServer(function(input, output, session) {
        county = input$collector_county,
        lake = input$collector_lake,
        street = input$collector_address,
-       files = paste0(name.vec, collapse = ',')
+       files = paste0(name.vec, collapse = ','),
+       submit_time = as.character(Sys.time()) #JUST FOR OUR RECORDS.
      )
      
      sheet_append(data = submitted.df, ss = metadata_id, sheet = "Sheet1")
@@ -324,15 +384,12 @@ shinyServer(function(input, output, session) {
      shinyjs::js$updateProgress(value = round((i+2/file.num)*100), label = 'Submission complete! Refresh the page to be able to submit again!')
      
      shinyjs::html(id = "aria_status", html = "Note: Submission was successful! To submit again, please refresh the page!")
-     
-    # Sys.sleep(time = 60)
-     
+
      removeUI(selector = "#temporary_upload_div") #REMOVE NOW STALE UI ASPECT.
      
      shinyjs::show("refresh_button")
      
      shinyjs::disable("submit_inputs")
-   #  shinyjs::js$hideProgressOverlay()
      
    })
    

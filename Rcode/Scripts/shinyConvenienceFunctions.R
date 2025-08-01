@@ -1,57 +1,3 @@
-#FUNCTION FOR CHECKING IF A VALUE IS EVEN (FOR COLLAPSIBLES MOSTLY)
-checkIfEven = function(val) {
-  if(val %% 2 == 0) { 
-    return(TRUE) 
-  } else { return(FALSE) }
-}
-
-#FUNCTION TO OPEN/CLOSE MODALS DEPENDING ON BUTTON CLICKS
-openCloseInfo = function(result, answer, question, session) {
-  if(result) {
-    shinyjs::hide(answer, anim=T, animType = "slide")
-    updateActionButton(session, question, icon=icon("plus"))
-    runjs(paste0("$('#", question, "').attr('aria-expanded', 'false');")) #These commands update the aria-expanded attribute to reflect whether the accordion is open or closed.
-  } else {
-    shinyjs::show(answer, anim=T, animType="slide")
-    updateActionButton(session, question, icon=icon("minus"))
-    runjs(paste0("$('#", question, "').attr('aria-expanded', 'true');"))
-  }
-}
-
-#RELATED FUNCTION THAT TOGGLES THE ARIA-EXPANDED ATTRIBUTE OF A SHINY ACTIONBUTTON THAT IS RUNNING AN ACCORDIAN-STYLE MENU.
-toggleAriaExpanded = function(id) {
-  runjs(sprintf("
-    (function() {
-      var el = document.getElementById('%s');
-      if (el) {
-        var current = el.getAttribute('aria-expanded');
-        // Toggle from 'true' -> 'false' or 'false' -> 'true'
-        if (current === 'true') {
-          el.setAttribute('aria-expanded', 'false');
-        } else {
-          el.setAttribute('aria-expanded', 'true');
-        }
-      }
-    })();
-  ", id))
-}
-
-#FUNCTION FOR DETECTING A VALID EMAIL ADDRESS
-isValidEmail = function(x) {
-  grepl("\\<[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\>",
-        as.character(x), 
-        ignore.case=TRUE)
-}
-
-#Function converts a lookup table into a function that does find and replacement in a vectorized way.
-replaceViaLookup = function(strings, toreplace, replacements) {
-  
-  replacement.vec = setNames(replacements, toreplace) #Make a named vector with the replacements as the names.
-  
-  stringr::str_replace_all(strings, replacement.vec) #Use this function to do the string replacements.
-}
-
-
 ##SHINY'S DATE INPUTS WILL BY DEFAULT SET A LABEL'S FOR ATTRIBUTE TO POINT AT THE HOUSING DIV INSTEAD OF AT THE INPUT SUB-ELEMENT. THIS FUNCTION IS A DROP-IN FIX FOR THIS--ADD IT TO THE UI AFTER ANY DATE INPUT AND REFERENCE ITS inputID.
 fixDateInputLabel = function(inputId) {
   tags$script(HTML(sprintf("
@@ -142,6 +88,7 @@ suppressRadioGroupLabelWarnings = function(inputId){
         var ele = document.createElement('p');
         ele.id = label.id;
         ele.className = label.className;
+        ele.classList.add(p-label);
         ele.textContent = label.textContent;
         label.parentNode.replaceChild(ele, label);
       }

@@ -268,7 +268,7 @@ input[type="checkbox"] {
 
 /* ### AD HOC ELEMENT ADJUSTMENTS ### */
 
-div.submitted_photos_rows {
+hr {
   border-bottom: 4px solid #333;
   border-top: 4px solid #333;
 }
@@ -324,4 +324,14 @@ button#refresh_button {
 button#refresh_button:hover {
   background-color: #900021 !important;
   color: white !important;
+}
+
+#submitted_files_progress {
+  height: 0px;
+  margin-bottom: 0px;
+}
+
+p.p-label {
+  font-size: 95%;
+  font-weight: 700;
 }

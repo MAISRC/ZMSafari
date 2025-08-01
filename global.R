@@ -27,7 +27,8 @@ sa_key_path = "tokens/.secrets/zm-safari-652312ebb93c.json"
 
 #DON'T TRY TO AUTHENTICATE USING STANDARD TOKENS.
 options(
-  gargle_oauth_cache = FALSE
+  gargle_oauth_cache = FALSE,
+  shiny.maxRequestSize = (100 * (1024^2)) #OTHERWISE, IT WILL NOT ACCEPT ENOUGH FILES FOR UPLOAD.
   )
 
 #AUTHENTICATE USING OUR JSON TOKEN ATTACHED TO OUR GOOGLE SERVICE ACCOUNT W/ PROPER SCOPES

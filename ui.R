@@ -54,6 +54,21 @@ tags$head(
 "))
 ),
 
+# #THIS SCRIPT HELPS TO TRY TO PASS ALONG JS CONSOLE ERRORS TO THE R CONSOLE TOO SO THEY MIGHT APPEAR IN ERROR LOGS:
+# tags$head(
+# tags$script(HTML("
+#   window.onerror = function(message, source, lineno, colno, error) {
+#     Shiny.setInputValue('js_error', {
+#       message: message,
+#       source: source,
+#       line: lineno,
+#       column: colno,
+#       stack: error ? error.stack : ''
+#     }, {priority: 'event'});
+#   };
+# "))
+# ),
+
   
 # ### ENABLING OPTIONAL FUNCTIONALITY ### ------------------------------------------
 
@@ -221,7 +236,9 @@ tags$main(id = "app_main",
                 <li>All images must be from the sampler deployed at the street address you entered for an earlier question.</li>
                 <li>Accepted file types: JPG, PNG, HEIC, HEIF, TIFF, BMP, GIF, WEBP, and PDF.</li>
                 <li>Once exactly 6 valid image files are uploaded, thumbnails will appear below this question along with follow-up questions about each image. Answering all those questions is required.</li>
-                <li>You may select files to upload in any order.</li></ul>"),
+                <li>You may select files to upload in any order.</li>
+                <li>The upload process may take a minute or two, depending upon your connection speed.</li>
+                <li>Newer phones can take photos that contain all kinds of bells and whistles: video clips, location data, captions, etc. We just want the highest-quality photo your phone can take and nothing else! So, it\'s optional, but if you know how, disable or exclude other features before uploading (uploading more complex files will take longer and might fail).</ul>"),
               multiple = TRUE, 
               accept = "image/*", 
               buttonLabel = "Select files"
@@ -303,7 +320,7 @@ div(
   div(
     style = "
       color: white;
-      font-size: 2rem;
+      font-size: 100%;
       background: #222;
       padding: 40px;
       border-radius: 10px;
@@ -330,7 +347,7 @@ div(
     )),
     tags$div(
       id = "progress_status_text",
-      style = "margin-top: 20px; font-size: 1.5rem; color: white;"
+      style = "margin-top: 20px; font-size: 100%; color: white;"
     ),
     br(),
     shinyjs::hidden(actionButton(inputId = "refresh_button",
