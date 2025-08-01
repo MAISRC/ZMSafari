@@ -41,6 +41,19 @@ tags$head(
     src = "js/preventDateInputOverlaps.js"
   )
 ),
+
+#THIS JS HELPS US REPOSITION THE SCREEN FOR THE USER ONCE INTERACTIONS WITH THE FILE INPUT OCCUR--OTHERWISE, INTERACTING WITH THE FILE INPUT JUMPS THEM TO THE TOP OF THE PAGE.
+tags$head(
+  tags$script(HTML("
+  Shiny.addCustomMessageHandler('scrollToTarget', function(message) {
+    const target = document.getElementById(message.id);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+"))
+),
+
   
 # ### ENABLING OPTIONAL FUNCTIONALITY ### ------------------------------------------
 
@@ -82,10 +95,8 @@ shinyjs::extendShinyjs(
 
   #USING THE SHINYDISCONNECT PACKAGE, WE CAN SET A CUSTOM DISCONNECT MESSAGE SO IT'S ABUNDANTLY CLEAR TO USERS THAT THE APP HAS CLOSED (IT'S NOT OBVIOUS OTHERWISE). 
   disconnectMessage(
-    text = HTML(
-        "Hmm...something has gone wrong. Either you have been idle for too long and the app has timed out or an error has been triggered in the R code of the application. To try again, refresh the page. If this happens again, please file a bug report with Alex at <a href='mailto:bajcz003@umn.edu'>bajcz003@umn.edu</a>. We appreciate your cooperation!"
-    ),
-                    refresh = "Refresh the page", 
+    text = "Hmm...", #IT ACTUALLY DOESN'T MATTER WHAT THIS SAYS--WE OVERWRITE IT USING THE FUNCTION BELOW ANYWAY.
+                    refresh = "Refresh", #SAME HERE.
                     width = "full", 
                     top = "center", 
                     size = 22, 
@@ -93,6 +104,10 @@ shinyjs::extendShinyjs(
                     colour = "white", 
                     refreshColour = "#ffb71e", 
                     css = "z-index: 100000 !important;"),
+
+tags$head(
+accessibleDisconnectMessage() #<--ENSURES THE DISCONNECT MESSAGE MEETS GUIDELINES.
+),
 
 #USING THE WAITER PACKAGE, WE CAN ADD IN A "PRELOADER WAITER" THAT SITS ON SCREEN WHILE THE APP BOOTS UP, WHICH IS REALLY ONLY NECESSARY IF START-UP TAKES KIND OF A WHILE. 
   # waiter::waiter_preloader(
@@ -117,22 +132,21 @@ shinyjs::extendShinyjs(
 tags$header(
     class = "flexthis flexcol width100 justifycenter flexwrap",
     #THE TITLE OF THE APP SHOULD BE IN THE HEADER, AND PROBABLY ALSO BEAR THE H1 TAG.
-    h1("Zebra Mussel Safari Photo Submissions App!"),
-    h2("New logo goes here."),
+    h1("[New logo will go here!]"),
     class = "flexthis flexcol width100 justifycenter flexwrap"), 
 
 ## ### MAIN CONTENT/MODULES ### --------------------------------------------
 
-tags$main(
-  tags$p(HTML("This is the photo submission page for the Zebra Mussel Safari program, managed by AIS Detectors and MAISRC at the University of Minnesota!<br><br>Please fill out the form below once for each sampler you are submitting photos for. Note: When you select picture files to upload, you must select exactly six files (all those from the same sampler)! If you are having trouble doing this on your device, please let us know.<br><br>After you\'ve uploaded your files, click the 'Submit' button, which will be enabled assuming you have filled out the form completely and adequately. The submission process will begin and a progress bar will display. After submission, you will get a notification indicating submission was successful. Submission will then be locked--reload the page to be able to submit again.")),
+tags$main(id = "app_main",
+  tags$p(HTML("This is the photo submission page for the Zebra Mussel Safari program, managed by AIS Detectors and MAISRC at the University of Minnesota!<br><br>Please fill out the form below once for each sampler you are submitting photos for. Note: When you select picture files to upload, you must select exactly six files (all those from the same sampler)! If you are having trouble doing this on your device, please let us know.<br><br>After you\'ve uploaded your files, click the 'Submit' button, which will be enabled assuming you have filled out the form completely and adequately. The submission process will begin and a progress bar will display. After submission, you will get a notification indicating submission was successful. Submission will then be locked--reload the page to be able to submit again.<br><br>Note: All questions on this form are required. Failure to answer even one question satisfactorily will prevent the submit button from enabling!")),
   
-  tags$form(
+  tags$form(id = "app_form",
     
     ##Inputs regions
     
     tags$fieldset(
       tags$legend(
-        h3("Submitter info")
+        h2("Submitter info")
         ),
     textInput(inputId = "collector_name",
               label = "Full name (First Last)",
@@ -150,7 +164,7 @@ tags$main(
     
     tags$fieldset(
       tags$legend(
-        h3("Submission details")
+        h2("Submission details")
         ),
       
     dateInput(inputId = "collection_date", 
@@ -196,19 +210,28 @@ tags$main(
     
     ), #END SUBMISSION SPECIFICS FIELDSET
     
-    tags$fieldset(
+    tags$fieldset(id = "whole_input_area",
       tags$legend(
-        h3("Photo uploads")
+        h2("Photo uploads")
       ),
       
     fileInput(inputId = "submitted_files",
-              label = "Upload photos of your sampler here. You should select exactly six image files: three pictures of top surfaces of plates and three pictures of bottom surfaces. They can be selected in any order.",
+              label = HTML("Important: Upload exactly six image files of your sampler: one photo of each plate surface (three plates (top, middle, and bottom), each with an upper and lower surface).<br>
+                <ul>
+                <li>All images must be from the sampler deployed at the street address you entered for an earlier question.</li>
+                <li>Accepted file types: JPG, PNG, HEIC, HEIF, TIFF, BMP, GIF, WEBP, and PDF.</li>
+                <li>Once exactly 6 valid image files are uploaded, thumbnails will appear below this question along with follow-up questions about each image. Answering all those questions is required.</li>
+                <li>You may select files to upload in any order.</li></ul>"),
               multiple = TRUE, 
               accept = "image/*", 
               buttonLabel = "Select files"
     ),
-    
+
     suppressFileInputFauxTextbox("submitted_files"),
+    
+    div(id = "file_warning_area",
+    uiOutput("file_val_warning"), #FILE VALIDATION WARNING.
+    ),
     
     div(id = "submitted_photos_div", #WHERE WE'LL DROP THUMBNAILS AND SELECTORS FOR EACH SUBMITTED PHOTO.
         div(id = "submitted_photos_row1",
@@ -236,15 +259,13 @@ tags$main(
             uiOutput("submitted_ui_6"))
 
         ),
-    shinyjs::hidden(checkboxInput(inputId = "confirm_address", 
-                  label = "Please confirm these pictures are for the street address you provided above!",
-                  value = FALSE))
+    uiOutput("confirm_address_div"),
     
     ), #END FILE UPLOADING FIELDSET
 
     tags$fieldset(
       tags$legend(
-        h3("Submit form")
+        h2("Submit form")
       ),
     shinyjs::disabled(actionButton(inputId = "submit_inputs",
                  label = "Complete form to unlock submission!"
@@ -291,7 +312,10 @@ div(
       text-align: center;
       box-shadow: 0 0 20px rgba(0,0,0,0.6);
     ",
+    div(id = "temporary_upload_div",
     "Uploading files...",
+    br(),
+    "This may take a few minutes, depending on the strength of your connection. Please be patient!",
     br(), br(),
     tags$progress(
       id = "custom_progress_bar",
@@ -303,11 +327,14 @@ div(
         border: 1px solid #ccc;
         background-color: #eee;
       "
-    ),
+    )),
     tags$div(
       id = "progress_status_text",
       style = "margin-top: 20px; font-size: 1.5rem; color: white;"
     ),
+    br(),
+    shinyjs::hidden(actionButton(inputId = "refresh_button",
+                                 label = "Refresh app")),
     tags$div(
       id = "aria_status",
       `aria-live` = "polite",

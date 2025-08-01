@@ -8,6 +8,17 @@ shinyServer(function(input, output, session) {
     pic_ui_done = FALSE, #STEP 2--ONLY ONCE WE HAVE 6 WORKABLE FILES DO WE ASSEMBLE PIC UI
     picinputs_alldiff = FALSE, #STEP 3--ONCE THE VALIDATION IS ON, WE ALSO PERFORM CHECKS TO ENSURE ALL OTHER VALIDATION IS ON AND THAT ALL THREE CHECKS PASS.
   )
+  
+  #PUT ON WAITER FOR WHEN PICS ARE SUBMITTED...
+  image_ui_waiter = Waiter$new(id = "app_main",
+                               html = tagList(p("Give us a sec to upload, check, and display your images...", style = "color: black;"),
+                                              spin_hexdots()),
+                               color = "#ffb71e", 
+                               fadeout = 1500)
+  
+  submit_debounced = debounce(reactive({input$submit_inputs}), millis = 750)
+  
+  last_submit_enabled = reactiveVal(NULL)
 
 
 # VALIDATORS --------------------------------------------------------------
@@ -15,41 +26,41 @@ shinyServer(function(input, output, session) {
   
   #VALIDATE THAT USERS HAVE SELECTED A REAL ANSWER FOR ALL PIC INPUTS
   piccheck.valid = InputValidator$new() 
-  piccheck.valid$add_rule("submitted_pic_plate1", sv_not_equal("No selection", "Note: Indicate which plate this is."))
-  piccheck.valid$add_rule("submitted_pic_plate2", sv_not_equal("No selection", "Note: Indicate which plate this is."))
-  piccheck.valid$add_rule("submitted_pic_plate3", sv_not_equal("No selection", "Note: Indicate which plate this is."))
-  piccheck.valid$add_rule("submitted_pic_plate4", sv_not_equal("No selection", "Note: Indicate which plate this is."))
-  piccheck.valid$add_rule("submitted_pic_plate5", sv_not_equal("No selection", "Note: Indicate which plate this is."))
-  piccheck.valid$add_rule("submitted_pic_plate6", sv_not_equal("No selection", "Note: Indicate which plate this is."))
-  piccheck.valid$add_rule("submitted_pic_surface1", sv_not_equal("No selection", "Note: Indicate which surface this is."))
-  piccheck.valid$add_rule("submitted_pic_surface2", sv_not_equal("No selection", "Note: Indicate which surface this is."))
-  piccheck.valid$add_rule("submitted_pic_surface3", sv_not_equal("No selection", "Note: Indicate which surface this is."))
-  piccheck.valid$add_rule("submitted_pic_surface4", sv_not_equal("No selection", "Note: Indicate which surface this is."))
-  piccheck.valid$add_rule("submitted_pic_surface5", sv_not_equal("No selection", "Note: Indicate which surface this is."))
-  piccheck.valid$add_rule("submitted_pic_surface6", sv_not_equal("No selection", "Note: Indicate which surface this is."))
+  piccheck.valid$add_rule("submitted_pic_plate1", sv_not_equal("No selection", "Indicate which plate this is."))
+  piccheck.valid$add_rule("submitted_pic_plate2", sv_not_equal("No selection", "Indicate which plate this is."))
+  piccheck.valid$add_rule("submitted_pic_plate3", sv_not_equal("No selection", "Indicate which plate this is."))
+  piccheck.valid$add_rule("submitted_pic_plate4", sv_not_equal("No selection", "Indicate which plate this is."))
+  piccheck.valid$add_rule("submitted_pic_plate5", sv_not_equal("No selection", "Indicate which plate this is."))
+  piccheck.valid$add_rule("submitted_pic_plate6", sv_not_equal("No selection", "Indicate which plate this is."))
+  piccheck.valid$add_rule("submitted_pic_surface1", sv_not_equal("No selection", "Indicate which surface this is."))
+  piccheck.valid$add_rule("submitted_pic_surface2", sv_not_equal("No selection", "Indicate which surface this is."))
+  piccheck.valid$add_rule("submitted_pic_surface3", sv_not_equal("No selection", "Indicate which surface this is."))
+  piccheck.valid$add_rule("submitted_pic_surface4", sv_not_equal("No selection", "Indicate which surface this is."))
+  piccheck.valid$add_rule("submitted_pic_surface5", sv_not_equal("No selection", "Indicate which surface this is."))
+  piccheck.valid$add_rule("submitted_pic_surface6", sv_not_equal("No selection", "Indicate which surface this is."))
   
   #VALIDATOR FOR THE REST OF THE FORM'S QUESTIONS
   form.valid = InputValidator$new() 
-  form.valid$add_rule("collector_name", sv_required("Note: Enter your full name."))
-  form.valid$add_rule("collector_email", sv_email("Note: Enter a valid email address."))
+  form.valid$add_rule("collector_name", sv_required("Enter your full name."))
+  form.valid$add_rule("collector_email", sv_email("Enter a valid email address."))
   form.valid$add_rule("collector_address", function(value) {
     if(!grepl("^[0-9]+\\s+[a-zA-Z0-9\\s\\p{P}]+$", value, perl = TRUE)) {
-      "Note: Enter a proper street address."
+      "Enter a proper street address."
     }
   })
   form.valid$add_rule("collection_date", function(value) {
     if(is.null(value) | as.Date(value) <= as.Date("2025-07-01") | as.Date(value) > Sys.Date()) {
-      "Note: Pick a valid date."
+      "Pick a valid date."
     }}
   )
   form.valid$add_rule("collector_county", 
-                      sv_not_equal("No selection", "Note: Select your county."))
+                      sv_not_equal("No selection", "Select your county."))
   form.valid$add_rule("collector_lake", function(value) {
     if(value == "Select a county first!" | value == "No selection") {
-      "Note: Choose your lake."
+      "Choose your lake."
     }
   })
-  form.valid$add_rule("confirm_address", sv_equal(TRUE, "Note: This question is required!"))
+  form.valid$add_rule("confirm_address", sv_equal(TRUE, "Please provide confirmation!"))
   
 
 # OBSERVERS ---------------------------------------------------------------
@@ -75,20 +86,41 @@ shinyServer(function(input, output, session) {
   ## PIC SUBMISSION LOGIC OBSERVERS ---------------------------------------------------
   
   #STEP 1 IN PIC SUBMISSION LOGIC CHAIN: WHEN USERS UPLOAD FILES, WE NEED TO CHECK THAT THEY ARE CORRECT IN TYPE AND NUMBER.
-  observeEvent(list(input$submitted_files), ignoreInit = TRUE, {
+  observeEvent(input$submitted_files, ignoreInit = TRUE, {
     
     reactives$valid_files = FALSE #TURN FLAG OFF TO START.
+    output$file_val_warning = renderUI({  }) #WIPE OUT WARNING.
 
-    req(input$submitted_files)
+    req(input$submitted_files) #MAKE SURE THERE EVEN ARE FILES.
     
     data1 = data.frame(input$submitted_files)
-    ext = tools::file_ext(data1$datapath) 
+    ext = tolower(tools::file_ext(input$submitted_files$datapath))
     
-    if(all(ext %in% c("tif", "tiff", "bmp", "jpg", "jpeg", "gif","pdf", "png", "PNG", 
-                      "TIF", "TIFF", "BMP", "JPG", "JPEG", "GIF", "PDF")) &&
-       length(ext) == 6) { #THERE SHOULD BE EXACTLY 6 FILES. 
+    if(length(ext) == 6 && #THERE SHOULD BE EXACTLY 6 FILES. 
+       length(unique(input$submitted_files$name)) == 6 && #ALL THE FILES SHOULD HAVE UNIQUE NAMES, WHICH SHOULD HELP ENSURE THEY ARE DISTINCT FILES.
+       all(ext %in% valid_image_exts)) { #AND ALL THE EXTENSIONS SHOULD BE IN OUR VALID LIST. 
       
       reactives$valid_files = TRUE #FLIP FLAG TO TRUE IF SO.
+      
+      #OTHERWISE, TRIGGER AN INFORMATIVE WARNING THAT HELPS USERS UNDERSTAND WHAT THEY DID WRONG, SPECIFICALLY.
+    } else {
+      #ASSEMBLE WARNING STRING BIT BY BIT.
+      val_string = "Whoops! We detected the following issues with your file uploads:<br><ul>"
+      if(length(ext) != 6){
+        val_string = paste(val_string, "<li>You uploaded more or fewer than six files.</li>", sep = "")
+      }
+      if(length(unique(input$submitted_files$name)) != 6 ) {
+        val_string = paste(val_string, "<li>At least two files had the same name, suggesting they might be duplicates.</li>", sep = "")
+      }
+      if(!all(ext %in% valid_image_exts)) {
+        val_string = paste(val_string, "<li>At least one file was of an invalid type.</li>", sep = "")
+      }
+      val_string = paste(val_string, "</ul><br>Please try uploading your image files again.")
+      
+      output$file_val_warning = renderUI({ HTML(val_string) })
+      shinyjs::html(id = "aria_status", html = val_string) #SEND TO ARIA-LIVE REGION ALSO
+      session$sendCustomMessage("scrollToTarget", list(id = "file_warning_area")) #SCROLL BACK DOWN.
+      
     }
     
   })
@@ -103,22 +135,27 @@ shinyServer(function(input, output, session) {
     output$submitted_ui_4 = renderUI({})
     output$submitted_ui_5 = renderUI({})
     output$submitted_ui_6 = renderUI({})
+    output$confirm_address_div = renderUI({})
     reactives$pic_ui_done = FALSE
-    shinyjs::hide("confirm_address")
     
     req(isTruthy(reactives$valid_files)) #COULD ONLY EVER PASS IF THERE ARE EXACTLY 6 FILES.
+
+    image_ui_waiter$show()
     
     data1 = data.frame(input$submitted_files)
     
+    #GO IMAGE BY IMAGE, LOAD, AND ASSEMBLE UI BLOCK
     for(i in 1:6) {
       local({
         my_i = i  #NECESSARY FOR SOME REASON
         b64 = base64enc::dataURI(file = data1$datapath[i], mime = "image/png") #GRAB THE IMAGE FILE
         output_id = paste0("submitted_ui_", my_i)
-        descriptor_text = paste0("Submitted pic #", my_i, ". Original file name: ", data1$name[i])
+        descriptor_text1 = paste0("Submitted pic #", my_i)
+        descriptor_text2 = paste0("Original file name: ", data1$name[i])
         output[[output_id]] = renderUI({ #USE LIST ASSIGNMENT INSTEAD OF $ OPERATOR
-          tagList(
-            p(descriptor_text),
+          tagList( #UI FOR THIS IMAGE.
+            h3(descriptor_text1),
+            p(descriptor_text2),
             column(width = 5, 
             img(src = b64, width = "310px", height = "100%", alt = "")
             ),
@@ -145,10 +182,29 @@ shinyServer(function(input, output, session) {
         })
       })
     }
+    #ADD ONE MORE QUESTION REQUESTED BY MEGAN.
+    output$confirm_address_div = renderUI({
+      checkboxInput(inputId = "confirm_address", 
+                                  label = "Please confirm these pictures are for the street address you provided above!",
+                                  value = FALSE)
+    })
     
-    shinyjs::show("confirm_address")
-    reactives$pic_ui_done = TRUE
+    shinyjs::html(id = "aria_status", html = "Note: The six files submitted were acceptable--they are now displayed on screen along with additional questions for you to answer.") #<-BUMP THE ARIA LIVE REGION.
+
+    reactives$pic_ui_done = TRUE #SET FLAG FOR PROGRESS.
+    image_ui_waiter$hide() #TURN OFF WAITER.
+    session$sendCustomMessage("scrollToTarget", list(id = "file_warning_area")) #SCROLL DOWN.
     
+  })
+  
+  ##ONCE THE PIC UI IS DONE, TRIGGER A SINGLE TURN-ON OF ALL VALIDATORS. 
+  observeEvent(reactives$pic_ui_done, ignoreInit = TRUE, once = TRUE, {
+    
+    if(reactives$pic_ui_done) {
+    form.valid$enable()
+    piccheck.valid$enable()
+    shinyjs::html(id = "aria_status", html = "We just checked over all your answers so far—if any are invalid, they are now marked with clarifications.") #<--SEND MESSAGE TO ARIA LIVE REGION FOR SCREEN READERS.
+    }
   })
 
     #STEP 3 IN PIC SUBMISSION LOGIC CHAIN: ONCE THEY HAVE ACCESS TO THE PIC QUESTIONS, ENSURE THAT ALL THOSE ANSWERS ARE UNIQUE.
@@ -166,29 +222,33 @@ shinyServer(function(input, output, session) {
       
       #THIS CHECK WILL PASS EVEN IF SOME ARE STILL NO SELECTION, BUT piccheck.valid WOULDN'T PASS IN THAT CASE, SO BETWEEN THE TWO, WE'RE GOOD.
       if(length(unique(c(str1, str2, str3, str4, str5, str6))) == 6) {
-        reactives$picinputs_alldiff = TRUE
+        reactives$picinputs_alldiff = TRUE #MARK FLAG TRU FOR PROGRESS.
       } else {
         reactives$picinputs_alldiff = FALSE
-        form.valid$enable()
-        piccheck.valid$enable()
       }
       
    })
    
-   #STEP 4 IN PIC SUBMISSION LOGIC CHAIN: ONLY ONCE ALL 6 UNIQUE ANSWERS WERE PROVIDED TO THE PIC QUESTIONS DO WE PERFORM THE FINAL CHECK TO TURN ON SUBMISSION.
+   #STEP 4 IN PIC SUBMISSION LOGIC CHAIN: ONLY ONCE ALL 6 UNIQUE ANSWERS WERE PROVIDED TO THE PIC QUESTIONS DO WE PERFORM THE FINAL CHECK TO TURN ON SUBMISSION. ****WOULD THE SCREEN READER MESSAGES BE TRIGGERING ALL THE TIME??
    observe({
+     
+     is_valid_now = isTruthy(reactives$picinputs_alldiff) && ##ALL THEIR ANSWERS MUST BE UNIQUE
+       isTruthy(piccheck.valid$is_valid()) && # AND THEY'VE SUBMITTED 6 VALID FILES AND HAVE ALSO ANSWERED ALL THE QUESTIONS (NO REMAIN AS 'NO SELECTION')
+       isTruthy(form.valid$is_valid()) #AND THEIR OTHER ANSWERS ARE VALID
 
-      if(
-        isTruthy(reactives$picinputs_alldiff) && ##ALL THEIR ANSWERS MUST BE UNIQUE
-        isTruthy(piccheck.valid$is_valid()) && # AND THEY'VE SUBMITTED 6 VALID FILES AND HAVE ALSO ANSWERED ALL THE QUESTIONS (NO REMAIN AS 'NO SELECTION')
-        isTruthy(form.valid$is_valid()) #AND THEIR OTHER ANSWERS ARE VALID
-        ) {
+     #ASSUMING THE STATUS HAS ACTUALLY CHANGED...
+      if(!identical(is_valid_now, last_submit_enabled())){
+        
+        last_submit_enabled(is_valid_now)
+        
+        if(is_valid_now) {
         
         updateActionButton(session, 
                            "submit_inputs",
                            label = "Submit!",
                            icon = icon("upload"))
         shinyjs::enable("submit_inputs")
+        shinyjs::html(id = "aria_status", html = "Note: The submit button is now active!")
         
       } else {
         
@@ -196,16 +256,19 @@ shinyServer(function(input, output, session) {
                            "submit_inputs",
                            label = "Complete form to unlock submission.")
         shinyjs::disable("submit_inputs")
+        shinyjs::html(id = "aria_status", html = "Note: The submit button is inactive because at least one of your answers is insufficient!")
         
        }
+      }
     })
    
 
   ## SUBMISSION OBSERVERS -----------------------------------------------------
-   observeEvent(input$submit_inputs, {
+   observeEvent(submit_debounced(), {
      
-     print(js)
-     
+     #CAN'T EVEN GET HERE UNLESS SUBMISSION IS OPEN.
+     shinyjs::html(id = "aria_status", html = "Note: Submission is starting!")
+
      data1 = input$submitted_files
      file.num = nrow(data1) + 2
      
@@ -239,12 +302,12 @@ shinyServer(function(input, output, session) {
        name.vec[i] = name.me
        
        progress_value = round((i / file.num) * 100)
-       progress_label = paste("Uploading file", i, "of", file.num - 1)
+       progress_label = paste("Uploading file", i, "of", file.num - 2)
        
        shinyjs::js$updateProgress(value = progress_value, label = progress_label)
      }
      
-     shinyjs::js$updateProgress(value = i+1/file.num, label = 'Uploading metadata')
+     shinyjs::js$updateProgress(value = round((i+1/file.num) * 100), label = 'Uploading metadata')
 
      submitted.df = data.frame(
        name = input$collector_name,
@@ -258,12 +321,24 @@ shinyServer(function(input, output, session) {
      
      sheet_append(data = submitted.df, ss = metadata_id, sheet = "Sheet1")
      
-     shinyjs::js$updateProgress(value = i+2/file.num, label = 'Submission complete! Refresh the page to be able to submit again!')
+     shinyjs::js$updateProgress(value = round((i+2/file.num)*100), label = 'Submission complete! Refresh the page to be able to submit again!')
      
-     Sys.sleep(time = 60)
+     shinyjs::html(id = "aria_status", html = "Note: Submission was successful! To submit again, please refresh the page!")
+     
+    # Sys.sleep(time = 60)
+     
+     removeUI(selector = "#temporary_upload_div") #REMOVE NOW STALE UI ASPECT.
+     
+     shinyjs::show("refresh_button")
      
      shinyjs::disable("submit_inputs")
-     shinyjs::js$hideProgressOverlay()
+   #  shinyjs::js$hideProgressOverlay()
+     
+   })
+   
+   #UPON HITTING THE REFRESH BUTTON, REFRESH THE PAGE.
+   observeEvent(input$refresh_button, {
+     shinyjs::refresh()
    })
 
 }) #End Server Side

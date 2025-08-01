@@ -200,7 +200,9 @@ button.btn.disabled {
 /* HERE'S WHERE YOU'D CODE WHAT WOULD CHANGE ABOUT A BUTTON IF IT WERE HOVERED OVER. */
 button:hover {
   background-color: #900021;
-  color: white }
+  color: white; 
+  
+}
   
   /* IF YOU USE THE DEFAULT DATE INPUT, THIS FORCES THE RESULTING WINDOW TO DEFINITELY HOVER ABOVE ALL OTHER ON-SCREEN CONTENT. */
 div.datepicker {
@@ -268,6 +270,7 @@ input[type="checkbox"] {
 
 div.submitted_photos_rows {
   border-bottom: 4px solid #333;
+  border-top: 4px solid #333;
 }
 
 img#logo {
@@ -291,4 +294,34 @@ div#submitted_photos_div {
 .bootstrap-select>.dropdown-toggle {
   min-width: 280px;
   max-width: 100%;
+}
+
+div.waiter-overlay.waiter-local {
+  top: 0px !important;
+}
+
+div#confirm_address>div.form-group {
+  width: unset !important;
+}
+
+.checkbox label input[type='checkbox'] {
+  width: 20px !important;
+  min-width: unset !important;
+  margin-left: -30px;
+}
+
+button#submit_inputs, button#refresh_button {
+  max-width: 375px;
+}
+
+button#refresh_button {
+  background-color: #FAFAFA !important; 
+  color: #7a0019 !important; 
+  min-width: unset !important;
+}
+
+/* HERE'S WHERE YOU'D CODE WHAT WOULD CHANGE ABOUT A BUTTON IF IT WERE HOVERED OVER. */
+button#refresh_button:hover {
+  background-color: #900021 !important;
+  color: white !important;
 }

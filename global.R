@@ -4,6 +4,7 @@
 
 library(shiny) #ESSENTIAL.
 library(dplyr) #DATA MANIPULATION.
+library(stringr) #STRING MANIPULATION.
 library(gargle) #GOOGLE DRIVE AUTHETICATION.
 library(googledrive) #GOOGLE DRIVE INTERACTIONS.
 library(googlesheets4) #GOOGLE SHEETS INTERACTIONS.
@@ -55,3 +56,5 @@ submitted_pics_id = googledrive::drive_get("https://drive.google.com/drive/folde
 
 
 # ### PRE-BAKE GLOBAL ENVIRONMENT OBJECTS ### -----------------------------
+valid_image_exts = c("jpg", "jpeg", "png", "gif", "bmp", "tif", "tiff", 
+                     "heic", "heif", "webp", "pdf")

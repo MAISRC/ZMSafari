@@ -148,3 +148,49 @@ suppressRadioGroupLabelWarnings = function(inputId){
     });
   ", inputId)))
 }
+
+##THE DISCONNECT MESSAGE FROM THE SHINYDISCONNECT PACKAGE UNWISELY PUTS TEXT CONTENTS INTO A CONTENT CSS PROPERTY OF A BEFORE PSEUDOELEMENT...NOT GREAT. THIS FUNCTION RELOCATES THAT TEXT TO AN ACTUAL DIV, DOES THE SAME FOR THE LINK TEXT, AND ENSURES THAT THE ALERT GRABS FOCUS AND GETS ANNOUNCED TO SCREEN READERS.
+
+accessibleDisconnectMessage = function() {
+  tags$script(HTML("
+    $(document).on('shiny:disconnected', function(event) {
+      var el = document.getElementById('ss-connect-dialog');
+      if (el) {
+              // Wipe out Shiny's ::before content styles to avoid duplicate text
+        var style = document.createElement('style');
+        style.innerHTML = `
+          #ss-connect-dialog::before,
+          #ss-connect-dialog a::before {
+            content: none !important;
+          }
+          #ss-connect-dialog a {
+          display: inline !important;
+          font-size: unset !important;
+          }
+        `;
+        document.head.appendChild(style);
+      
+        // Create an accessible alert container
+        var msgContainer = document.createElement('div');
+        msgContainer.innerHTML = \"Hmm...something has gone wrong. Either you have been idle for too long and the app has timed out or an error has been triggered in the R code of the application. To try again, refresh the page. If this happens again, please file a bug report with Alex at <a href='mailto:bajcz003@umn.edu'>bajcz003@umn.edu</a>. We appreciate your cooperation!\";
+        msgContainer.setAttribute('role', 'alertdialog');
+        msgContainer.setAttribute('tabindex', '-1');
+        msgContainer.setAttribute('aria-label', 'Error message');
+        msgContainer.style.outline = 'none';
+        msgContainer.style.marginBottom = '1em';
+
+        // Insert it at the beginning of the disconnect dialog
+        el.insertBefore(msgContainer, el.firstChild);
+
+        // Shift focus for screen reader and keyboard users
+        msgContainer.focus();
+
+        // Ensure the reload link has readable text
+        var reloadLink = document.getElementById('ss-reload-link');
+        if (reloadLink && reloadLink.innerText.trim() === '') {
+          reloadLink.innerText = 'Refresh the page';
+        }
+      }
+    });
+  "))
+}
