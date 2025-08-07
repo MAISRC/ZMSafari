@@ -26,53 +26,47 @@ shinyServer(function(input, output, session) {
   
   #VALIDATE THAT USERS HAVE SELECTED A REAL ANSWER FOR ALL PIC INPUTS
   piccheck.valid = InputValidator$new() 
-  piccheck.valid$add_rule("submitted_pic_plate1", sv_not_equal("No selection", "Indicate which plate this is."))
-  piccheck.valid$add_rule("submitted_pic_plate2", sv_not_equal("No selection", "Indicate which plate this is."))
-  piccheck.valid$add_rule("submitted_pic_plate3", sv_not_equal("No selection", "Indicate which plate this is."))
-  piccheck.valid$add_rule("submitted_pic_plate4", sv_not_equal("No selection", "Indicate which plate this is."))
-  piccheck.valid$add_rule("submitted_pic_plate5", sv_not_equal("No selection", "Indicate which plate this is."))
-  piccheck.valid$add_rule("submitted_pic_plate6", sv_not_equal("No selection", "Indicate which plate this is."))
-  piccheck.valid$add_rule("submitted_pic_surface1", sv_not_equal("No selection", "Indicate which surface this is."))
-  piccheck.valid$add_rule("submitted_pic_surface2", sv_not_equal("No selection", "Indicate which surface this is."))
-  piccheck.valid$add_rule("submitted_pic_surface3", sv_not_equal("No selection", "Indicate which surface this is."))
-  piccheck.valid$add_rule("submitted_pic_surface4", sv_not_equal("No selection", "Indicate which surface this is."))
-  piccheck.valid$add_rule("submitted_pic_surface5", sv_not_equal("No selection", "Indicate which surface this is."))
-  piccheck.valid$add_rule("submitted_pic_surface6", sv_not_equal("No selection", "Indicate which surface this is."))
+  piccheck.valid$add_rule("submitted_pic_plate1", sv_not_equal("No selection", "Required: Indicate which plate this is."))
+  piccheck.valid$add_rule("submitted_pic_plate2", sv_not_equal("No selection", "Required: Indicate which plate this is."))
+  piccheck.valid$add_rule("submitted_pic_plate3", sv_not_equal("No selection", "Required: Indicate which plate this is."))
+  piccheck.valid$add_rule("submitted_pic_plate4", sv_not_equal("No selection", "Required: Indicate which plate this is."))
+  piccheck.valid$add_rule("submitted_pic_plate5", sv_not_equal("No selection", "Required: Indicate which plate this is."))
+  piccheck.valid$add_rule("submitted_pic_plate6", sv_not_equal("No selection", "Required: Indicate which plate this is."))
+  piccheck.valid$add_rule("submitted_pic_surface1", sv_not_equal("No selection", "Required: Indicate which surface this is."))
+  piccheck.valid$add_rule("submitted_pic_surface2", sv_not_equal("No selection", "Required: Indicate which surface this is."))
+  piccheck.valid$add_rule("submitted_pic_surface3", sv_not_equal("No selection", "Required: Indicate which surface this is."))
+  piccheck.valid$add_rule("submitted_pic_surface4", sv_not_equal("No selection", "Required: Indicate which surface this is."))
+  piccheck.valid$add_rule("submitted_pic_surface5", sv_not_equal("No selection", "Required: Indicate which surface this is."))
+  piccheck.valid$add_rule("submitted_pic_surface6", sv_not_equal("No selection", "Required: Indicate which surface this is."))
   
   #VALIDATOR FOR THE REST OF THE FORM'S QUESTIONS
   form.valid = InputValidator$new() 
-  form.valid$add_rule("collector_name", sv_required("Enter your full name."))
+  form.valid$add_rule("collector_name", function(value) {
+    if(!grepl(".+\\s.+", value, perl = TRUE)) {
+      "Required: Enter your full name (Text[space]Text)."
+    }
+  })
   form.valid$add_rule("collector_email", sv_email("Enter a valid email address."))
   form.valid$add_rule("collector_address", function(value) {
     if(!grepl("^[0-9]+\\s+[a-zA-Z0-9\\s\\p{P}]+$", value, perl = TRUE)) {
-      "Enter a proper street address."
+      "Required: Enter a proper street address."
     }
   })
   form.valid$add_rule("collection_date", function(value) {
     if(is.null(value) | as.Date(value) <= as.Date("2025-07-01") | as.Date(value) > Sys.Date()) {
-      "Pick a valid date."
+      "Required: Pick a valid date."
     }}
   )
   form.valid$add_rule("collector_county", 
                       sv_not_equal("No selection", "Select your county."))
   form.valid$add_rule("collector_lake", function(value) {
     if(value == "Select a county first!" | value == "No selection") {
-      "Choose your lake."
+      "Required: Choose your lake."
     }
   })
-  form.valid$add_rule("confirm_address", sv_equal(TRUE, "Please provide confirmation!"))
+  form.valid$add_rule("confirm_address", sv_equal(TRUE, "Required: Please provide confirmation!"))
 
 # OBSERVERS ---------------------------------------------------------------
-
-
-  ## DEBUGGING OBSERVERS -----------------------------------------------------
-
-  # THIS WILL HOPEFULLY PASS ALONG ERRORS FROM THE JS CONSOLE SO THEY REGISTER IN ERROR MESSAGES.
-  # observeEvent(input$js_error, {
-  #   print("JS Error from client:")
-  #   str(input$js_error)
-  # })
-  # 
 
   ## UI UPDATING OBSERVERS ---------------------------------------------------
 
@@ -95,6 +89,17 @@ shinyServer(function(input, output, session) {
   observeEvent(input$uiRendered, {
     image_ui_waiter$hide()
     session$sendCustomMessage("scrollToTarget", list(id = "file_warning_area"))
+  })
+  
+  #HERE'S WHERE WE WATCH FOR STORED EMAILS AND NAMES AND UPDATE SELECTORS IF WE FIND THEM
+  observeEvent(input$stored_name, {
+    req(isTruthy(input$stored_name))
+    updateTextInput(session, "collector_name", value = input$stored_name)
+  })
+  
+  observeEvent(input$stored_email, {
+    req(isTruthy(input$stored_email))
+    updateTextInput(session, "collector_email", value = input$stored_email)
   })
 
   ## PIC SUBMISSION LOGIC OBSERVERS ---------------------------------------------------
@@ -121,12 +126,12 @@ shinyServer(function(input, output, session) {
       #OTHERWISE, TRIGGER AN INFORMATIVE WARNING THAT HELPS USERS UNDERSTAND WHAT THEY DID WRONG, SPECIFICALLY.
     } else {
       #ASSEMBLE WARNING STRING BIT BY BIT.
-      val_string = "Whoops! We detected the following issues with your file uploads:<br><ul>"
+      val_string = "Note: We detected the following issues with your file uploads:<br><ul>"
       if(length(ext) != 6){
         val_string = paste(val_string, "<li>You uploaded more or fewer than six files.</li>", sep = "")
       }
       if(length(ext) == 6 && length(unique(input$submitted_files$name)) != 6 ) {
-        val_string = paste(val_string, "<li>At least two files had the same name, suggesting they might be duplicates.</li>", sep = "")
+        val_string = paste(val_string, "<li>At least two files had the same file name, suggesting they might be duplicates.</li>", sep = "")
       }
       if(!all(ext %in% valid_image_exts)) {
         val_string = paste(val_string, "<li>At least one file was of an invalid type.</li>", sep = "")
@@ -180,7 +185,7 @@ shinyServer(function(input, output, session) {
               inputId = paste0("submitted_pic_plate", my_i),
               label = "Which plate within the sampler is in this picture?",
               choiceValues = c("No selection", "Top", "Middle", "Bottom"),
-              choiceNames = c("No selection", "The top one (Closest to the surface)", "The middle one", "The bottom (closest to the lakebed)"),
+              choiceNames = c("No selection", "The top one (closest to the surface)", "The middle one", "The bottom (closest to the lakebed)"),
               inline = F
             ),
             suppressRadioGroupLabelWarnings(paste0("submitted_pic_plate", my_i)),
@@ -253,12 +258,10 @@ shinyServer(function(input, output, session) {
                                        input$submitted_pic_surface5,
                                        input$submitted_pic_surface6) == "No selection")
                                    
-                                   print(check_sum)
-                                   
          if(check_sum != 0 && check_sum < 3) { #IT WILL INITIALLY BE 0 ON INITIATION, IGNORE THAT.
            form.valid$enable()
            piccheck.valid$enable()
-           shinyjs::html(id = "aria_status", html = "We just checked over your form. If any answers are invalid, they will now be marked with clarifications.") #<--SEND MESSAGE TO ARIA LIVE REGION FOR SCREEN READERS.
+           shinyjs::html(id = "aria_status", html = "We just checked over your form. If any answers are invalid, they will now be marked.") #<--SEND MESSAGE TO ARIA LIVE REGION FOR SCREEN READERS.
          }
     
   })
@@ -282,8 +285,12 @@ shinyServer(function(input, output, session) {
       #THIS CHECK WILL PASS EVEN IF SOME ARE STILL NO SELECTION, BUT piccheck.valid WOULDN'T PASS IN THAT CASE, SO BETWEEN THE TWO, WE'RE GOOD.
       if(length(unique(c(str1, str2, str3, str4, str5, str6))) == 6) {
         reactives$picinputs_alldiff = TRUE #MARK FLAG TRU FOR PROGRESS.
+        output$duped_answers_warning = renderUI({})
       } else {
         reactives$picinputs_alldiff = FALSE
+        output$duped_answers_warning = renderUI({
+          span("Note: Either you\'ve failed to answer some of the photo-related questions above or you\'ve duplicated one combination of responses (e.g., you\'ve said two photos are from the top surface of the top plate). Please double-check your responses and adjust accordingly to proceed.")
+        })
       }
       
    })
@@ -315,7 +322,7 @@ shinyServer(function(input, output, session) {
                            "submit_inputs",
                            label = "Complete form to unlock submission.")
         shinyjs::disable("submit_inputs")
-        shinyjs::html(id = "aria_status", html = "Note: The submit button is inactive because at least one of your answers is insufficient!")
+        shinyjs::html(id = "aria_status", html = "Note: The submit button is inactive because at least one of your answers is invalid!")
         
        }
       }
@@ -390,6 +397,10 @@ shinyServer(function(input, output, session) {
      shinyjs::show("refresh_button")
      
      shinyjs::disable("submit_inputs")
+     
+     #AS A CONVENIENCE, WE CAN CACHE IN A USER'S BROWSER THEIR NAME AND EMAIL DATA, THEN LOOK FOR IT AGAIN UPON REFRESH. IF WE FIND IT, WE CAN UPDATE THOSE TWO SELECTORS TO THOSE VALUES.
+     runjs("localStorage.setItem('ZMSafariSubmittedName', $('#collector_name').val());")
+     runjs("localStorage.setItem('ZMSafariSubmittedEmail', $('#collector_email').val());")
      
    })
    

@@ -54,20 +54,26 @@ tags$head(
 "))
 ),
 
-# #THIS SCRIPT HELPS TO TRY TO PASS ALONG JS CONSOLE ERRORS TO THE R CONSOLE TOO SO THEY MIGHT APPEAR IN ERROR LOGS:
-# tags$head(
-# tags$script(HTML("
-#   window.onerror = function(message, source, lineno, colno, error) {
-#     Shiny.setInputValue('js_error', {
-#       message: message,
-#       source: source,
-#       line: lineno,
-#       column: colno,
-#       stack: error ? error.stack : ''
-#     }, {priority: 'event'});
-#   };
-# "))
-# ),
+#THIS JS CODE CHECKS LOCAL BROWSER STORAGE FOR PREVIOUSLY CACHED NAMES AND EMAIL ADDRESSES FROM PREVIOUS SUBMISSIONS AND, IF IT FINDS IT, TRIGGERS SHINY EVENTS WE CAN WATCH SERVER-SIDE.  
+tags$head(
+tags$script(HTML("
+  $(document).on('shiny:connected', function() {
+    var name = localStorage.getItem('ZMSafariSubmittedName');
+    var email = localStorage.getItem('ZMSafariSubmittedEmail');
+    if(name) Shiny.setInputValue('stored_name', name, {priority: 'event'});
+    if(email) Shiny.setInputValue('stored_email', email, {priority: 'event'});
+  });
+"))
+),
+
+##RIGHT NOW, UPON REFRESH, YOU STAY DOWN BY THE SUBMIT BUTTON INSTEAD OF JUMPING BACK TO THE TOP. THIS FIXES THAT.
+tags$head(
+  tags$script(HTML("
+  $(document).on('shiny:connected', function() {
+      window.scrollTo(0, 0);
+    });
+  "))
+),
 
   
 # ### ENABLING OPTIONAL FUNCTIONALITY ### ------------------------------------------
@@ -125,18 +131,18 @@ accessibleDisconnectMessage() #<--ENSURES THE DISCONNECT MESSAGE MEETS GUIDELINE
 ),
 
 #USING THE WAITER PACKAGE, WE CAN ADD IN A "PRELOADER WAITER" THAT SITS ON SCREEN WHILE THE APP BOOTS UP, WHICH IS REALLY ONLY NECESSARY IF START-UP TAKES KIND OF A WHILE. 
-  # waiter::waiter_preloader(
-  #   html = tagList(
-  #     waiter::spin_loaders(6),
-  #     br(),
-  #     br(),
-  #     HTML("<em>Welcome to the Zebra Mussel Safari App, operated by the Minnesota Aquatic Invasive Species Research Center! Please wait while we gas up the Jeep...</em>"),
-  #     br(),
-  #     br(),
-  #     img(src = "preload.png", alt = "")), #EITHER PROVIDE ALT TEXT OR DESCRIBE ANY IMAGE USED HERE IN THE MAIN TEXT ABOVE.
-  #     color = "#7a0019",
-  #     fadeout = 500,
-  # ),
+  waiter::waiter_preloader(
+    html = tagList(
+      waiter::spin_loaders(6),
+      br(),
+      br(),
+      HTML("<em>Welcome to the Zebra Mussel Safari App, operated by the Minnesota Aquatic Invasive Species Research Center! Please wait while we gas up the Jeep...</em>"),
+      br(),
+      br(),
+      img(src = "preload.png", alt = "")), #EITHER PROVIDE ALT TEXT OR DESCRIBE ANY IMAGE USED HERE IN THE MAIN TEXT ABOVE.
+      color = "#7a0019",
+      fadeout = 500,
+  ),
 
 
 # ### CORE APP UI ELEMENTS ### --------------------------------------------
@@ -147,12 +153,15 @@ accessibleDisconnectMessage() #<--ENSURES THE DISCONNECT MESSAGE MEETS GUIDELINE
 tags$header(
     class = "flexthis flexcol width100 justifycenter flexwrap",
     #THE TITLE OF THE APP SHOULD BE IN THE HEADER, AND PROBABLY ALSO BEAR THE H1 TAG.
-    h1("[New logo will go here!]"),
+    h1(
+      img(src = "ZM Safari Shiny App Header Image.png", alt = "Zebra Mussel Safari Data Submission App", id = "h1_title_logo")
+    ),
     class = "flexthis flexcol width100 justifycenter flexwrap"), 
 
 ## ### MAIN CONTENT/MODULES ### --------------------------------------------
 
 tags$main(id = "app_main",
+          tags$h2("Instructions", tabIndex = "0"),
   tags$p(HTML("This is the photo submission page for the Zebra Mussel Safari program, managed by AIS Detectors and MAISRC at the University of Minnesota!<br><br>Please fill out the form below once for each sampler you are submitting photos for. Note: When you select picture files to upload, you must select exactly six files (all those from the same sampler)! If you are having trouble doing this on your device, please let us know.<br><br>After you\'ve uploaded your files, click the 'Submit' button, which will be enabled assuming you have filled out the form completely and adequately. The submission process will begin and a progress bar will display. After submission, you will get a notification indicating submission was successful. Submission will then be locked--reload the page to be able to submit again.<br><br>Note: All questions on this form are required. Failure to answer even one question satisfactorily will prevent the submit button from enabling!")),
   
   tags$form(id = "app_form",
@@ -276,6 +285,8 @@ tags$main(id = "app_main",
             uiOutput("submitted_ui_6"))
 
         ),
+    suppressAriaLiveForPhotos("submitted_ui_1", "submitted_ui_"), #<-ONLY GET ONE ARIA-LIVE OUT OF THESE 6 CONTAINERS.
+    uiOutput("duped_answers_warning"), #<-IF THEY FAIL TO PROVIDE 6 UNIQUE RESPONSES.
     uiOutput("confirm_address_div"),
     
     ), #END FILE UPLOADING FIELDSET
@@ -298,7 +309,7 @@ tags$main(id = "app_main",
 
 #Insert a footer with links, contact info, funding credits, and current version number.
 tags$footer(
-HTML("The Zebra Mussel Safari App was designed and is maintained by <address><a href='mailto:bajcz003@umn.edu'>Dr. Alex Bajcz (bajcz003@umn.edu)</a></address>, staff Quantitative Ecologist for <a href ='https://maisrc.umn.edu/ target = '_blank'>MAISRC</a>.<br><br>App last updated August 1st, 2025. Version 1.0.0. <a href = 'https://docs.google.com/document/d/1mc2aGAWRS2uIpR_4a7o4w95h-yWAseBcIxF9c3A44fk/edit?usp=sharing' target = '_blank'>View our accessibility statement (opens in a new tab)</a><br><br>
+HTML("The Zebra Mussel Safari App was designed and is maintained by <address><a href='mailto:bajcz003@umn.edu'>Dr. Alex Bajcz (bajcz003@umn.edu)</a></address>, staff Quantitative Ecologist for <a href ='https://maisrc.umn.edu/ target = '_blank'>MAISRC</a>.<br><br>App last updated August 7, 2025. Version 1.0.1. <a href = 'https://docs.google.com/document/d/1mc2aGAWRS2uIpR_4a7o4w95h-yWAseBcIxF9c3A44fk/edit?usp=sharing' target = '_blank'>View our accessibility statement (opens in a new tab)</a><br><br>
                                    Funding for this work was provided by the Minnesota Environment and Natural Resources Trust Fund (ENRTF) as recommended by the Minnesota Aquatic Invasive Species Research Center (MAISRC) and the Legislative-Citizen Commission on Minnesota Resources (LCCMR) and also the State of Minnesota.<br>"), 
 img(src = "jointlogo.png", id = "logo", alt = "")
  ),

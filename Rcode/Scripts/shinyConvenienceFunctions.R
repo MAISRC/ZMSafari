@@ -40,28 +40,46 @@ suppressNativeSelectAccessibility = function(inputId) {
   ", inputId)))
 }
 
-##PICKERINPUTS ACTUALLY FUNCTION UNDER THE HOOD BY CREATING BUTTON ELEMENTS THAT DO THE REAL WORK. HOWEVER, BY DEFAULT, THEY GIVE THESE BUTTONS A TITLE ATTRIBUTE THAT DUPLICATES THE BUTTON TEXT, WHICH WAVE DOESN'T LIKE. THIS FUNCTION SUPPRESSES THE TITLE ATTRIBUTE SINCE IT'D BE REDUNDANT IN THESE INSTANCES ANYHOW.
+##PICKERINPUTS ACTUALLY FUNCTION UNDER THE HOOD BY CREATING BUTTON ELEMENTS THAT DO THE REAL WORK. HOWEVER, BY DEFAULT, THEY GIVE THESE BUTTONS A TITLE ATTRIBUTE THAT DUPLICATES THE BUTTON TEXT, WHICH WAVE DOESN'T LIKE. THIS FUNCTION SUPPRESSES THE TITLE ATTRIBUTE SINCE IT'D BE REDUNDANT IN THESE INSTANCES ANYHOW
 stripPickerDuplicateTitles = function(inputId) {
   tags$script(HTML(sprintf("
     $(document).ready(function() {
-      // Bootstrap-select renders a <button> after setup
-      // Use a short delay to wait for rendering
-      setTimeout(function() {
+      function fixTitle() {
         var button = document.querySelector('button[data-id=\"%s\"]');
         if (button) {
           var labelText = button.innerText.trim();
           var titleText = button.getAttribute('title')?.trim();
+          button.setAttribute('tabindex', '0'); //MAKE IT TABBABLE AND PUT IN ACCESSIBILITY TREE.
 
           if (titleText && labelText === titleText) {
             button.removeAttribute('title');
+            console.log('Removed redundant title from: %s');
           }
         }
-      }, 100);
+      }
+
+      // Run once on load
+      fixTitle();
+
+      // Set up a MutationObserver to detect DOM changes
+      var target = document.getElementById('%s');
+      if (!target) return;
+
+      var observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.type === 'childList') {
+            fixTitle();
+          }
+        });
+      });
+
+      observer.observe(target.parentNode, { childList: true, subtree: true });
     });
-  ", inputId)))
+  ", inputId, inputId, inputId)))
 }
 
-#FILEINPUTS HAVE THIS BOGUS, JUST-FOR-SHOW TEXT INPUT ELEMENT THAT HOLDS PLACEHOLDER TEXT, PROGRESS BAR, AND FILE NAMES. THIS FAILS TO GET A LABEL, WHICH WAVE DOESN'T LIKE. THIS FUNCTION CHANGES THIS INPUT'S ATTRIBUTES TO BE MORE FULLY IGNORABLE.
+
+#FILEINPUTS HAVE THIS BOGUS, JUST-FOR-SHOW TEXT INPUT ELEMENT THAT HOLDS PLACEHOLDER TEXT, PROGRESS BAR, AND FILE NAMES. THIS FAILS TO GET A LABEL, WHICH WAVE DOESN'T LIKE. THIS FUNCTION CHANGES THIS INPUT'S ATTRIBUTES TO BE MORE FULLY IGNORABLE. IT ALSO PROVIDES SOME ADDITIONAL ATTRIBUTES TO MAKE SURE IT CAN'T GET FOCUS OR GET PUT IN THE ACCESSIBILITY TREE FOR SCREEN READERS.
 suppressFileInputFauxTextbox = function(inputId) {
   tags$script(HTML(sprintf("
     $(document).ready(function() {
@@ -73,7 +91,10 @@ suppressFileInputFauxTextbox = function(inputId) {
 
       var fauxInput = inputGroup.querySelector('input.form-control[type=\"text\"]');
       if (fauxInput) {
-        fauxInput.setAttribute('aria-label', 'Filename display only (decorative)');
+        fauxInput.setAttribute('aria-hidden', 'true');
+        fauxInput.setAttribute('tabindex', '-1');
+        fauxInput.setAttribute('role', 'presentation');
+        fauxInput.setAttribute('aria-label', 'Filename display only (decorative)'); 
       }
     });
   ", inputId)))
@@ -88,7 +109,7 @@ suppressRadioGroupLabelWarnings = function(inputId){
         var ele = document.createElement('p');
         ele.id = label.id;
         ele.className = label.className;
-        ele.classList.add(p-label);
+        ele.classList.add('p-label');
         ele.textContent = label.textContent;
         label.parentNode.replaceChild(ele, label);
       }
@@ -97,7 +118,6 @@ suppressRadioGroupLabelWarnings = function(inputId){
 }
 
 ##THE DISCONNECT MESSAGE FROM THE SHINYDISCONNECT PACKAGE UNWISELY PUTS TEXT CONTENTS INTO A CONTENT CSS PROPERTY OF A BEFORE PSEUDOELEMENT...NOT GREAT. THIS FUNCTION RELOCATES THAT TEXT TO AN ACTUAL DIV, DOES THE SAME FOR THE LINK TEXT, AND ENSURES THAT THE ALERT GRABS FOCUS AND GETS ANNOUNCED TO SCREEN READERS.
-
 accessibleDisconnectMessage = function() {
   tags$script(HTML("
     $(document).on('shiny:disconnected', function(event) {
@@ -140,4 +160,17 @@ accessibleDisconnectMessage = function() {
       }
     });
   "))
+}
+
+#uiOutputs AUTOMATICALLY COME WITH ARIA-LIVE REGIONS THAT WILL YAP AT SCREEN READERS WHEN THEY RE-UPDATE. HERE, WE'LL HAVE 6 APPEAR AT ONCE AND ONLY THE FIRST NEEDS TO UPDATE USERS AS A RESULT, SO WE'LL REMOVE THE ARIA-LIVE ATTRIBUTES FROM THE OTHERS.
+suppressAriaLiveForPhotos <- function(keepId, starts_with) {
+  tags$script(HTML(sprintf("
+      $(document).on('shiny:connected', function() {
+      $('.shiny-html-output').each(function() {
+        if (this.id !== '%s' && this.id.startsWith('%s')) {
+          this.removeAttribute('aria-live');
+        }
+      });
+    });
+  ", keepId, starts_with)))
 }

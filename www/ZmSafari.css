@@ -86,6 +86,12 @@ img {
   margin-bottom: 10px;
 }
 
+/* APPS NEED TO HAVE A SINGLE, CONSISTENT FOCUS INDICATOR, SO THIS WILL SET THAT. SOMETIMES, DIFFERENT ELEMENTS IN SHINY APPS GET DIFFERENT FOCUS INDICATORS BY DEFAULT. */
+:focus-visible {
+  outline: 3px solid #333 !important;  /* or whatever your color is */
+  outline-offset: 2px !important;
+}
+
 
 /* ### ADJUSTING COMMON SEMANTIC ELEMENTS/TAGS ### */
 
@@ -138,7 +144,6 @@ legend {
   max-width: 80%; 
   min-width: 310px;
   margin: 5px auto; 
-  font-style: italic; 
   color: black; 
   min-width: 310px;
   font-size: medium;
