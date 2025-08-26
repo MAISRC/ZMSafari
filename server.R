@@ -5,16 +5,8 @@ shinyServer(function(input, output, session) {
 
   reactives = reactiveValues(
     valid_files = FALSE, #STEP 1 IN REACTION CHAIN--ENSURE 6 FILES OF APPROPRIATE TYPES SUBMITTED.
-    pic_ui_done = FALSE, #STEP 2--ONLY ONCE WE HAVE 6 WORKABLE FILES DO WE ASSEMBLE PIC UI
     picinputs_alldiff = FALSE, #STEP 3--ONCE THE VALIDATION IS ON, WE ALSO PERFORM CHECKS TO ENSURE ALL OTHER VALIDATION IS ON AND THAT ALL THREE CHECKS PASS.
   )
-  
-  #PUT ON WAITER FOR WHEN PICS ARE SUBMITTED...
-  image_ui_waiter = Waiter$new(id = NULL, #SET TO WHOLE PAGE.
-    html = tagList(p("Give us a sec: Now that we\'ve received your pics (nice pics by the way!), we\'re getting the rest of the form ready for you...", style = "color: black; font-size: 125%;"), br(), br(),
-                                              spin_hexdots()),
-                               color = "#ffb71e", 
-                               fadeout = 1500)
   
   submit_debounced = debounce(reactive({input$submit_inputs}), millis = 750)
   
@@ -58,12 +50,14 @@ shinyServer(function(input, output, session) {
     }}
   )
   form.valid$add_rule("collector_county", 
-                      sv_not_equal("No selection", "Select your county."))
+                      sv_not_equal("No selection", "Required: Select your county."))
   form.valid$add_rule("collector_lake", function(value) {
     if(value == "Select a county first!" | value == "No selection") {
       "Required: Choose your lake."
     }
   })
+  form.valid$add_rule("submission_hardness", 
+                      sv_not_equal("Pick", "Required: Indicate hardness."))
   form.valid$add_rule("confirm_address", sv_equal(TRUE, "Required: Please provide confirmation!"))
 
 # OBSERVERS ---------------------------------------------------------------
@@ -83,12 +77,6 @@ shinyServer(function(input, output, session) {
                       choices = c("No selection", 
                                   sort(unique(newlakeslist))))
     
-  })
-  
-  #WAIT UNTIL THE UI HAS ACTUALLY FULLY BUILT BEFORE SCROLLING AND TURNING THE WAITER OFF.
-  observeEvent(input$uiRendered, {
-    image_ui_waiter$hide()
-    session$sendCustomMessage("scrollToTarget", list(id = "file_warning_area"))
   })
   
   #HERE'S WHERE WE WATCH FOR STORED EMAILS AND NAMES AND UPDATE SELECTORS IF WE FIND THEM
@@ -112,7 +100,16 @@ shinyServer(function(input, output, session) {
 
     req(input$submitted_files) #MAKE SURE THERE EVEN ARE FILES.
     
-    image_ui_waiter$show()
+    shinyjs::disable("submission_hardness") #TO KEEP IT FROM BEING ACCIDENTALLY TOGGLED DURING THIS PROCESS.
+    
+   #UPDATE THE OVERLAY TO REFLECT THE FACT THAT THE SERVER IS NOW WORKING ON THE FILES.
+    
+    #ACTIVATE INDETERMINATE PHASE
+    session$sendCustomMessage("overlay", list(
+      action = "indeterminate",
+      title  = "Preparing image submission interface",
+      text   = "Now making the rest of the form..."
+    ))
     
     data1 = data.frame(input$submitted_files)
     ext = tolower(tools::file_ext(input$submitted_files$datapath))
@@ -140,8 +137,18 @@ shinyServer(function(input, output, session) {
       
       output$file_val_warning = renderUI({ HTML(val_string) })
       shinyjs::html(id = "aria_status", html = val_string) #SEND TO ARIA-LIVE REGION ALSO
+
+
+      shinyjs::enable("submission_hardness") #TO KEEP IT FROM BEING ACCIDENTALLY TOGGLED DURING THIS PROCESS.
+      
+      session$sendCustomMessage('overlay', 
+                                list(action='hide')) #ENSURE THE OVERLAY GOES AWAY.
+      session$onFlushed(function(){
+        session$sendCustomMessage("overlay", 
+                                  list(action="hide"))
+      }, once = TRUE)
+      
       session$sendCustomMessage("scrollToTarget", list(id = "file_warning_area")) #SCROLL BACK DOWN.
-      image_ui_waiter$hide()
       
     }
     
@@ -168,17 +175,45 @@ shinyServer(function(input, output, session) {
     for(i in 1:6) {
       local({
         my_i = i  #NECESSARY FOR SOME REASON
-        b64 = base64enc::dataURI(file = data1$datapath[i], mime = "image/png") #GRAB THE IMAGE FILE
+
+        info = make_thumb(data1$datapath[my_i], max_px = 1000, quality = 70, prefer = "webp")
+  
         output_id = paste0("submitted_ui_", my_i)
         descriptor_text1 = paste0("Submitted pic #", my_i)
         descriptor_text2 = paste0("Original file name: ", data1$name[i])
+        
         output[[output_id]] = renderUI({ #USE LIST ASSIGNMENT INSTEAD OF $ OPERATOR
+          
+          img_col = if(isTRUE(info$ok)) {
+            # Normal thumbnail
+            column(
+              width = 5,
+              tags$img(
+                src      = info$rel_src,
+                width    = info$width,   # 310 is the default
+                height   = "100%",
+                alt      = paste0("Preview of submitted pic #", my_i),
+                loading  = "lazy",
+                decoding = "async",
+                style    = "max-width:100%; height:auto; display:block;"
+              )
+            )
+          } else {
+            # Graceful placeholder (no crash!)
+            column(
+              width = 5,
+              tags$div(
+                style = "border:2px dashed #aaa; padding:14px; text-align:center;",
+                tags$div(style="font-weight:600; margin-bottom:6px;", "Preview unavailable"),
+                tags$div(style="font-size:90%;", info$msg)
+              )
+            )
+          }
+          
           tagList( #UI FOR THIS IMAGE.
             h3(descriptor_text1),
             p(descriptor_text2),
-            column(width = 5, 
-            img(src = b64, width = "310px", height = "100%", alt = "")
-            ),
+            img_col, #<--INSERT FROM ABOVE.
             column(width = 7,
                    class = "flexthis flexwrap flexcol",
             radioButtons(
@@ -196,39 +231,45 @@ shinyServer(function(input, output, session) {
               choiceNames = c("No selection", "The upper surface (facing the sky)", "The lower surface (facing the lakebed)"),
               inline = F
             ),
-            suppressRadioGroupLabelWarnings(paste0("submitted_pic_surface", my_i)),
-            hr()
+            suppressRadioGroupLabelWarnings(paste0("submitted_pic_surface", my_i))
            )
           )
         })
       })
     }
+    
     #ADD ONE MORE QUESTION REQUESTED BY MEGAN.
     output$confirm_address_div = renderUI({
       tagList(checkboxInput(inputId = "confirm_address", 
                                   label = "Please confirm these pictures are for the street address you provided above!",
                                   value = FALSE),
-      hr(),
-      tags$script(HTML("Shiny.setInputValue('uiRendered', Math.random());")) #TRIGGER THE WAITER TO TURN OFF.
+      tags$script(HTML("Shiny.setInputValue('uiRendered', Math.random());")) #TRIGGER THE OVERLAY TO TURN OFF BUT ONLY ONCE THE UI IS RENDERED ENOUGH TO ACTUALLY GET TO THIS SCRIPT.
       )
     })
     
     shinyjs::html(id = "aria_status", html = "Note: The six files submitted were acceptable--they are now displayed on screen along with additional questions for you to answer.") #<-BUMP THE ARIA LIVE REGION.
 
-    reactives$pic_ui_done = TRUE #SET FLAG FOR PROGRESS.
-    session$sendCustomMessage("scrollToTarget", list(id = "file_warning_area")) #SCROLL DOWN.
+    shinyjs::enable("submission_hardness") #TO KEEP IT FROM BEING ACCIDENTALLY TOGGLED DURING THIS PROCESS.
+    
+  })
+  
+  
+  #WAIT UNTIL THE UI HAS ACTUALLY FULLY BUILT BEFORE SCROLLING AND TURNING THE OVERLAY OFF.
+  observeEvent(input$uiRendered, ignoreInit = T, {
+    
+    session$sendCustomMessage('overlay', 
+                              list(action = 'hide')) #ENSURE THE OVERLAY GOES AWAY.
+    session$onFlushed(function(){
+      session$sendCustomMessage("overlay", 
+                                list(action = "hide"))
+    }, once = TRUE)
+    
+    session$sendCustomMessage("scrollToTarget", list(id = "file_warning_area")) #SCROLL BACK DOWN.
+    
+    validation_observer$resume() #ALSO TURN ON THE OBSERVER LOOKING FOR WHETHER USERS HAVE FILLED OUT ENOUGH OF THE FORM.
+    
+  })
 
-    
-  })
-  
-  ##ONCE THE PIC UI IS DONE, TRIGGER A SINGLE TURN-ON OF THE OBSERVER THAT STARTS CHECKING TO SEE IF A USER IS GETTING CLOSE TO THE END OF THE FORM SO WE CAN TURN ON THE VALIDATION CHECKERS.
-  observeEvent(reactives$pic_ui_done, ignoreInit = TRUE, once = TRUE, {
-    
-    if(reactives$pic_ui_done) {
-      validation_observer$resume()
-    }
-  })
-  
   #THIS SUSPENDED OBSERVER WATCHES ALL THE PIC RELATED INPUTS AND SUMS THEIR OUTPUTS TO SEE WHEN A USER IS DOWN TO THEIR LAST COUPLE, THEN TURNS ON THE VALIDATIONS.
   validation_observer = observeEvent(list(input$submitted_pic_plate1,
                                           input$submitted_pic_plate2,
@@ -270,10 +311,8 @@ shinyServer(function(input, output, session) {
     #STEP 3 IN PIC SUBMISSION LOGIC CHAIN: ONCE THEY HAVE ACCESS TO THE PIC QUESTIONS, ENSURE THAT ALL THOSE ANSWERS ARE UNIQUE.
    observe({
      
-      req(isTruthy(reactives$pic_ui_done)) #ONLY DOESN'T GATE WHEN READY.
-     
- #    image_ui_waiter$hide() #TURN OFF WAITER.
-      
+      req(isTruthy(input$uiRendered)) #ONLY DOESN'T GATE WHEN READY.
+
       ##WE FIRST DO A CHECK TO ENSURE THAT ALL THE PIC INPUTS YIELD DIFFERENT OUTPUT STRINGS TO ENSURE THEY ARE ALL DIFFERENT. THAT MEANS WE ARE GETTING A PIC FROM EACH PLATE'S SURFACE.
       str1 = paste0(input$submitted_pic_plate1, input$submitted_pic_surface1, collapse = '')
       str2 = paste0(input$submitted_pic_plate2, input$submitted_pic_surface2, collapse = '')
@@ -295,7 +334,7 @@ shinyServer(function(input, output, session) {
       
    })
    
-   #STEP 4 IN PIC SUBMISSION LOGIC CHAIN: ONLY ONCE ALL 6 UNIQUE ANSWERS WERE PROVIDED TO THE PIC QUESTIONS DO WE PERFORM THE FINAL CHECK TO TURN ON SUBMISSION. ****WOULD THE SCREEN READER MESSAGES BE TRIGGERING ALL THE TIME??
+   #STEP 4 IN PIC SUBMISSION LOGIC CHAIN: ONLY ONCE ALL 6 UNIQUE ANSWERS WERE PROVIDED TO THE PIC QUESTIONS DO WE PERFORM THE FINAL CHECK TO TURN ON SUBMISSION.
    observe({
      
      is_valid_now = isTruthy(reactives$picinputs_alldiff) && ##ALL THEIR ANSWERS MUST BE UNIQUE
@@ -336,12 +375,33 @@ shinyServer(function(input, output, session) {
      shinyjs::html(id = "aria_status", html = "Note: Submission is starting!")
 
      data1 = input$submitted_files
-     file.num = nrow(data1) + 2
+     file.num = 6
      
-     shinyjs::js$showProgressOverlay()
+     session$sendCustomMessage("overlay", list(
+       
+       action = "show",
+       title = "Submitting your form...",
+       text = "Preparing data upload...",
+       pct = 0
+       
+     ))
+     
+     
      name.vec = rep(NA, nrow(data1))
      
-     for (i in seq_len(nrow(data1))) {
+     for (i in 1:6) {
+       
+       progress_value = round((i / file.num) * 100)
+       progress_label = paste("Uploading image file", i, "of", file.num)
+       
+       session$sendCustomMessage("overlay", list(
+         
+         action = "update",
+         text = progress_label,
+         pct = progress_value
+         
+       ))
+       
        ext = tools::file_ext(data1$datapath[i])
        
        dow = stringr::str_sub(input$collector_lake, nchar(input$collector_lake) - 8, nchar(input$collector_lake) - 1)
@@ -367,13 +427,14 @@ shinyServer(function(input, output, session) {
        drive_upload(media = tmp.path1, path = submitted_pics_id, name = name.me)
        name.vec[i] = name.me
        
-       progress_value = round((i / file.num) * 100)
-       progress_label = paste("Uploading file", i, "of", file.num - 2)
-       
-       shinyjs::js$updateProgress(value = progress_value, label = progress_label)
      }
      
-     shinyjs::js$updateProgress(value = round((i+1/file.num) * 100), label = 'Uploading metadata')
+     #UPDATE OVERLAY
+     session$sendCustomMessage("overlay", list(
+       action = "indeterminate",
+       title  = "Submitting your form",
+       text   = "Submitting submission metadata…"
+     ))
 
      submitted.df = data.frame(
        name = input$collector_name,
@@ -383,12 +444,19 @@ shinyServer(function(input, output, session) {
        lake = input$collector_lake,
        street = input$collector_address,
        files = paste0(name.vec, collapse = ','),
-       submit_time = as.character(Sys.time()) #JUST FOR OUR RECORDS.
+       submit_time = as.character(Sys.time()), #JUST FOR OUR RECORDS.
+       hardness = input$submission_hardness
      )
      
      sheet_append(data = submitted.df, ss = metadata_id, sheet = "Sheet1")
      
-     shinyjs::js$updateProgress(value = round((i+2/file.num)*100), label = 'Submission complete! Refresh the page to be able to submit again!')
+     session$sendCustomMessage("overlay", list(
+       action     = "show",          # auto-exits indeterminate
+       title      = "Form submission",
+       text       = "Submission complete! To submit again, please refresh the page.",
+       pct        = 100,
+       buttonText = "Refresh"
+     ))
      
      shinyjs::html(id = "aria_status", html = "Note: Submission was successful! To submit again, please refresh the page!")
 
@@ -405,7 +473,7 @@ shinyServer(function(input, output, session) {
    })
    
    #UPON HITTING THE REFRESH BUTTON, REFRESH THE PAGE.
-   observeEvent(input$refresh_button, {
+   observeEvent(input$app_overlay_button, {
      shinyjs::refresh()
    })
 

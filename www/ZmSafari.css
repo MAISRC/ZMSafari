@@ -301,10 +301,6 @@ div#submitted_photos_div {
   max-width: 100%;
 }
 
-div.waiter-overlay.waiter-local {
-  top: 0px !important;
-}
-
 div#confirm_address>div.form-group {
   width: unset !important;
 }
@@ -325,7 +321,6 @@ button#refresh_button {
   min-width: unset !important;
 }
 
-/* HERE'S WHERE YOU'D CODE WHAT WOULD CHANGE ABOUT A BUTTON IF IT WERE HOVERED OVER. */
 button#refresh_button:hover {
   background-color: #900021 !important;
   color: white !important;
@@ -339,4 +334,151 @@ button#refresh_button:hover {
 p.p-label {
   font-size: 95%;
   font-weight: 700;
+}
+
+span.irs-grid-text {
+  font-size: 90%;
+}
+
+span.irs-bar {
+  border-top: 1px solid #7a0019 !important;
+  border-bottom: 1px solid #7a0019 !important;
+  background: #7a0019 !important;
+}
+
+span.irs-single {
+  background-color: #7a0019 !important;
+  font-size: 90% !important;
+}
+
+span.irs-grid-pol {
+  width: 3px !important;
+}
+
+span.irs-grid-pol.small {
+  width: 0px !important;
+}
+
+span.irs-min, span.irs-max {
+  visibility: hidden !important;
+  font-size: 90% !important;
+}
+
+/* CSS RELATED TO OVERLAY UPON FILE UPLOADS AND SUBMISSION */
+body div#app-overlay {
+  display: none; 
+  position: fixed !important; 
+  inset: 0 !important; 
+  z-index: 10000 !important; 
+  background: rgba(0,0,0,0.65) !important; 
+  align-items: center; 
+  justify-content: center; 
+  text-align: left;
+}
+
+#app-overlay, #app-overlay * {
+  font-family: "OpenSans", Arial, sans-serif;
+}
+
+@media (max-width: 480px) {
+  div#app-overlay-panel {
+    width: 94% !important;
+    padding: 18px !important;
+    border-radius: 12px !important;
+  }
+  h2#app-overlay-title { 
+    font-size: 120% !important; 
+  }
+  p#app-overlay-text { 
+    font-size: 100% !important; 
+  }
+  div#app-overlay-bar { 
+    height: 12px !important;
+  }
+}
+
+body div#app-overlay div#app-overlay-panel {
+  background: #fff !important; 
+  color: #000 !important; 
+  padding: 20px 22px;
+  border-radius :14px; 
+  width: min(560px,92%);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+}
+
+h2#app-overlay-title {
+  font-weight: 800; 
+  font-size: 130%; 
+  color: #7a0019; 
+  margin-bottom: 8px;
+}
+
+p#app-overlay-text {
+  font-size: 100%; 
+  line-height: 1.35;
+}
+
+div#app-overlay-bar {
+  margin-top: 14px; 
+  height: 12px; 
+  background: #eee; 
+  border-radius: 999px; 
+  overflow: hidden;
+}
+
+body div#app-overlay div#app-overlay-bar-fill {
+  height: 100%; 
+  width: 0%; 
+  background: #7a0019;
+  transition: width 150ms ease-in-out;
+}
+
+div#app-overlay-actions {
+  margin-top: 16px; 
+  display: none;
+}
+
+button#app_overlay_btn.btn.btn-default {
+  background-color: #FAFAFA;
+  color: #7a0019;
+  border-color: black;
+  border-width: 2px;
+  font-weight: bold;
+}
+
+button#app_overlay_btn.btn.btn-default:hover {
+  background-color: #900021;
+  color: white;
+}
+
+/* LIGHTWEIGHT ANNOTATIONS FOR THE OVERLAY PROGRESS BAR FOR MOMENTS WHEN IT MIGHT OTHERWISE LOOK LIKE THINGS ARE HANGING */
+#app-overlay-bar.is-indeterminate {
+  position: relative;
+  overflow: hidden;
+}
+
+#app-overlay-bar.is-indeterminate #app-overlay-bar-fill {
+  display: none; /* HIDE DETERMINATE FILL QUANTITY WHEN PROGRESS IS INDETERMINANT */
+}
+
+/* I THINK THIS ADDS A THROBBER EFFECT? */
+#app-overlay-bar.is-indeterminate::after {
+  content: "";
+  position: absolute; top: 0; left: 0;
+  height: 100%; 
+  width: 30%;
+  background: #7a0019;            /* UMN maroon */
+  transform: translateX(-40%);    /* start well before the left edge */
+  animation: overlay-indet 1.2s infinite linear;
+  will-change: transform;
+}
+@keyframes overlay-indet {
+  0%   { transform: translateX(-140%); }
+  100% { transform: translateX(340%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #app-overlay-bar.is-indeterminate::after {
+    animation-duration: 2.0s;
+  }
 }

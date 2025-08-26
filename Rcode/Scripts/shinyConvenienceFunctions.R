@@ -53,7 +53,6 @@ stripPickerDuplicateTitles = function(inputId) {
 
           if (titleText && labelText === titleText) {
             button.removeAttribute('title');
-            console.log('Removed redundant title from: %s');
           }
         }
       }
@@ -75,7 +74,7 @@ stripPickerDuplicateTitles = function(inputId) {
 
       observer.observe(target.parentNode, { childList: true, subtree: true });
     });
-  ", inputId, inputId, inputId)))
+  ", inputId, inputId)))
 }
 
 
